@@ -1343,9 +1343,9 @@ io.on('connection', (socket) => {
     console.log(`Session created: ${roomCode}`);
   });
 
-  // Student joins session
+  // Student/group joins session
   socket.on('join-session', (payload) => {
-    const { roomCode, studentName } = payload;
+    const { roomCode, studentName, requestedGroupId } = payload;
     const session = sessions[roomCode];
 
     if (!session) {
@@ -1353,18 +1353,23 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Auto-assign to group (round-robin)
-    const groupIds = Object.keys(session.groups);
-    let assignedGroupId = null;
-    let minMembers = Infinity;
-    for (const gid of groupIds) {
-      if (session.groups[gid].members.length < minMembers) {
-        minMembers = session.groups[gid].members.length;
-        assignedGroupId = gid;
+    // Use the requested group if provided, otherwise fall back to round-robin
+    let assignedGroupId;
+    if (requestedGroupId !== undefined && session.groups[requestedGroupId]) {
+      assignedGroupId = requestedGroupId;
+    } else {
+      // Fallback: auto-assign to smallest group
+      const groupIds = Object.keys(session.groups);
+      let minMembers = Infinity;
+      for (const gid of groupIds) {
+        if (session.groups[gid].members.length < minMembers) {
+          minMembers = session.groups[gid].members.length;
+          assignedGroupId = gid;
+        }
       }
     }
 
-    // Add student to session
+    // Add student/device to session
     session.students[socket.id] = {
       name: studentName,
       groupId: assignedGroupId,
@@ -1372,7 +1377,7 @@ io.on('connection', (socket) => {
       profile: null
     };
 
-    // Add student to group
+    // Add to group
     session.groups[assignedGroupId].members.push(socket.id);
 
     socket.join(roomCode);
@@ -1392,7 +1397,7 @@ io.on('connection', (socket) => {
       groupId: assignedGroupId
     });
 
-    console.log(`Student ${studentName} joined ${roomCode} group ${assignedGroupId}`);
+    console.log(`${studentName} joined ${roomCode} group ${assignedGroupId}`);
   });
 
   // Host assigns student to group

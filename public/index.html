@@ -190,6 +190,47 @@
             }
         }
 
+        .group-picker-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .group-picker-card {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .group-picker-card:hover {
+            border-color: var(--accent-purple);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.3);
+        }
+
+        .group-picker-card-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 4px;
+        }
+
+        .group-picker-card-prompt {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .group-picker-card-members {
+            font-size: 11px;
+            color: var(--accent-teal);
+            margin-top: 6px;
+        }
+
         .form-group {
             display: flex;
             flex-direction: column;
@@ -1415,19 +1456,13 @@
                             autocomplete="off"
                         >
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Your Name</label>
-                        <input
-                            type="text"
-                            class="form-input"
-                            id="student-name-input"
-                            placeholder="Enter your name"
-                            autocomplete="off"
-                        >
-                    </div>
-                    <button class="button button-primary" id="join-submit-btn">
-                        Join
+                    <button class="button button-secondary" id="lookup-groups-btn">
+                        Find Session
                     </button>
+                    <div class="group-picker" id="group-picker" style="display: none;">
+                        <label class="form-label" style="margin-top: 16px;">Select Your Group</label>
+                        <div class="group-picker-list" id="group-picker-list"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1435,17 +1470,19 @@
         <!-- Host Setup View -->
         <div id="host-setup-view" class="view">
             <div class="setup-container">
-                <h2 class="section-title">Step 1: Select Categories</h2>
+                <h2 class="section-title">Select Categories</h2>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">Choose which design categories students will see. All are selected by default.</p>
                 <div class="category-grid" id="categories-grid">
                     <!-- Populated by JS -->
                 </div>
 
-                <h2 class="section-title">Step 2: Configure Groups</h2>
-                <div class="groups-container" id="groups-container">
-                    <!-- Populated by JS -->
+                <h2 class="section-title" style="margin-top: 28px;">Number of Groups</h2>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">How many groups are you splitting the class into?</p>
+                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+                    <button class="button button-secondary" id="groups-minus" style="width: 44px; height: 44px; padding: 0; font-size: 22px; border-radius: 50%;">-</button>
+                    <span id="group-count-display" style="font-size: 36px; font-weight: 700; color: var(--accent-gold); min-width: 40px; text-align: center;">3</span>
+                    <button class="button button-secondary" id="groups-plus" style="width: 44px; height: 44px; padding: 0; font-size: 22px; border-radius: 50%;">+</button>
                 </div>
-
-                <button class="add-group-btn" id="add-group-btn">+ Add Group (Max 6)</button>
 
                 <button class="launch-button" id="launch-session-btn">
                     Launch Session
@@ -1482,7 +1519,6 @@
                 <div class="group-info">
                     <div>
                         <div class="group-name-display" id="student-group-name">Group A</div>
-                        <div class="group-prompt-display" id="student-group-prompt">Loading...</div>
                     </div>
                 </div>
             </div>
@@ -1693,7 +1729,29 @@
 
         socket.on('session-created', (data) => {
             state.roomCode = data.roomCode;
-            state.groups = data.groups;
+            // Convert groups object to array format for easier iteration
+            state.groups = Object.entries(data.groups).map(([id, group]) => ({
+                id: parseInt(id),
+                name: group.name,
+                prompt: group.prompt,
+                members: []
+            }));
+            // Initialize groupAggregates for all groups
+            state.groups.forEach(group => {
+                state.groupAggregates[group.id] = {
+                    groupId: group.id,
+                    groupName: group.name,
+                    memberCount: 0,
+                    members: [],
+                    aggregate: {
+                        dimensions: { warmth: 0, honesty: 0, autonomy: 0, memory: 0, boundaries: 0, availability: 0 },
+                        badges: [],
+                        features: [],
+                        avatarShape: 'circle',
+                        avatarColor: '#7C4DFF'
+                    }
+                };
+            });
             showView('host-dashboard');
             renderDashboard();
         });
@@ -1727,11 +1785,23 @@
         });
 
         socket.on('group-updated', (data) => {
-            state.groupAggregates[data.groupId] = data;
+            // Preserve existing members list and update aggregate data
+            const existingMembers = state.groupAggregates[data.groupId]?.members || [];
+            state.groupAggregates[data.groupId] = {
+                ...data,
+                members: existingMembers
+            };
             updateDashboardGroup(data.groupId);
         });
 
         socket.on('student-joined', (data) => {
+            // Track the new member in the group aggregate
+            if (state.groupAggregates[data.groupId]) {
+                if (!state.groupAggregates[data.groupId].members) {
+                    state.groupAggregates[data.groupId].members = [];
+                }
+                state.groupAggregates[data.groupId].members.push(data.studentName);
+            }
             updateDashboardGroup(data.groupId);
         });
 
@@ -1741,6 +1811,35 @@
                 state.groupAggregates[group.groupId] = group;
             });
             renderComparisonView();
+        });
+
+        socket.on('student-left', (data) => {
+            // Remove student from the group's member list
+            for (const groupId in state.groupAggregates) {
+                const group = state.groupAggregates[groupId];
+                if (group.members) {
+                    group.members = group.members.filter(m => m !== data.studentName);
+                    if (group.memberCount > 0) {
+                        group.memberCount--;
+                    }
+                }
+            }
+            // Update dashboard display
+            if (state.currentView === 'host-dashboard') {
+                renderDashboard();
+            }
+        });
+
+        socket.on('session-reset', () => {
+            // Clear all group data and selections
+            state.groupAggregates = {};
+            state.selections = {};
+            state.selectedOptions = {};
+            if (state.currentView === 'host-dashboard') {
+                renderDashboard();
+            } else if (state.currentView === 'student') {
+                renderStudentView();
+            }
         });
 
         // =====================================================================
@@ -1789,23 +1888,49 @@
             e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
         });
 
-        document.getElementById('join-submit-btn').addEventListener('click', () => {
+        // Look up the session and show available groups
+        document.getElementById('lookup-groups-btn').addEventListener('click', () => {
             const roomCode = document.getElementById('room-code-input').value.trim();
-            const studentName = document.getElementById('student-name-input').value.trim();
 
             if (!roomCode || roomCode.length !== 4) {
                 showError('Please enter a 4-letter room code');
                 return;
             }
 
-            if (!studentName) {
-                showError('Please enter your name');
-                return;
-            }
+            fetch('/api/session/' + roomCode)
+                .then(res => {
+                    if (!res.ok) throw new Error('Session not found');
+                    return res.json();
+                })
+                .then(data => {
+                    const picker = document.getElementById('group-picker');
+                    const list = document.getElementById('group-picker-list');
+                    list.innerHTML = '';
 
-            state.role = 'student';
-            state.studentName = studentName;
-            socket.emit('join-session', { roomCode, studentName });
+                    const groups = data.groups || {};
+                    Object.entries(groups).forEach(([groupId, group]) => {
+                        const card = document.createElement('div');
+                        card.className = 'group-picker-card';
+                        card.innerHTML = `
+                            <div class="group-picker-card-name">${group.name}</div>
+                        `;
+                        card.addEventListener('click', () => {
+                            state.role = 'student';
+                            state.studentName = group.name;
+                            socket.emit('join-session', {
+                                roomCode,
+                                studentName: group.name,
+                                requestedGroupId: groupId
+                            });
+                        });
+                        list.appendChild(card);
+                    });
+
+                    picker.style.display = 'block';
+                })
+                .catch(err => {
+                    showError('Session not found. Check the room code.');
+                });
         });
 
         // =====================================================================
@@ -1813,33 +1938,25 @@
         // =====================================================================
 
         const CATEGORIES = [
-            { id: 'personality', name: 'Personality' },
-            { id: 'capability', name: 'Capability' },
-            { id: 'ethics', name: 'Ethics' },
-            { id: 'embodiment', name: 'Embodiment' },
-            { id: 'memory', name: 'Memory' },
-            { id: 'learning', name: 'Learning' },
-            { id: 'sociability', name: 'Sociability' },
-            { id: 'creativity', name: 'Creativity' },
-            { id: 'transparency', name: 'Transparency' },
-            { id: 'boundaries', name: 'Boundaries' }
+            { id: 'identity', name: 'Identity & Embodiment' },
+            { id: 'personality', name: 'Personality & Communication' },
+            { id: 'honesty', name: 'Honesty & Feedback' },
+            { id: 'memory', name: 'Memory & Awareness' },
+            { id: 'boundaries', name: 'Boundaries & Power' },
+            { id: 'relationship', name: 'Relationship & Attachment' },
+            { id: 'ethics', name: 'Ethics, Values & Secrets' },
+            { id: 'availability', name: 'Availability & Presence' },
+            { id: 'growth', name: 'Growth, Change & Mortality' },
+            { id: 'transparency', name: 'Transparency & the Company' }
         ];
 
-        const PRESET_PROMPTS = [
-            'Design the most ethical AI',
-            'Design the AI most people would actually pay for',
-            'Design the AI you personally want (be honest)',
-            'Design the most dangerous AI (if widely adopted)',
-            'Design an AI for a lonely elderly person',
-            'Design an AI for a depressed college student',
-            'Design an AI that would make a philosopher proud',
-            'Design the AI Big Tech is most likely to build'
-        ];
+        let groupCount = 3;
 
         function renderSetupView() {
             // Render category grid
             const categoriesGrid = document.getElementById('categories-grid');
             categoriesGrid.innerHTML = '';
+            state.activeCategories = [];
 
             CATEGORIES.forEach(category => {
                 const card = document.createElement('div');
@@ -1857,17 +1974,11 @@
                 });
 
                 categoriesGrid.appendChild(card);
-
-                // Add to active by default
                 state.activeCategories.push(category.id);
             });
 
-            // Initial group setup
-            state.groups = [
-                { id: 'group-0', name: 'Group A', prompt: '' },
-                { id: 'group-1', name: 'Group B', prompt: '' }
-            ];
-            renderGroupsSetup();
+            // Update group count display
+            document.getElementById('group-count-display').textContent = groupCount;
         }
 
         function updateActiveCategories() {
@@ -1875,97 +1986,17 @@
                 .map(card => card.dataset.categoryId);
         }
 
-        function renderGroupsSetup() {
-            const container = document.getElementById('groups-container');
-            container.innerHTML = '';
+        document.getElementById('groups-minus').addEventListener('click', () => {
+            if (groupCount > 2) {
+                groupCount--;
+                document.getElementById('group-count-display').textContent = groupCount;
+            }
+        });
 
-            state.groups.forEach((group, index) => {
-                const card = document.createElement('div');
-                card.className = 'group-card';
-                card.dataset.groupId = group.id;
-
-                const groupLetter = String.fromCharCode(65 + index); // A, B, C...
-
-                card.innerHTML = `
-                    <div class="group-header">
-                        <span class="group-label">Group ${groupLetter}</span>
-                        <input
-                            type="text"
-                            class="group-input group-name-input"
-                            value="${group.name}"
-                        >
-                        ${state.groups.length > 2 ? `<button class="remove-group-btn" data-group-id="${group.id}">✕</button>` : ''}
-                    </div>
-
-                    <div class="prompt-section">
-                        <label class="prompt-label">Group Prompt</label>
-                        <select class="prompt-select prompt-select-input">
-                            <option value="">-- Choose a preset prompt or create custom --</option>
-                            ${PRESET_PROMPTS.map((prompt, i) => `<option value="${prompt}">${prompt}</option>`).join('')}
-                            <option value="custom">-- Custom Prompt --</option>
-                        </select>
-                        <textarea
-                            class="prompt-custom prompt-custom-input"
-                            placeholder="Enter your custom prompt here..."
-                        >${group.prompt && !PRESET_PROMPTS.includes(group.prompt) ? group.prompt : ''}</textarea>
-                    </div>
-                `;
-
-                container.appendChild(card);
-
-                // Wire up event listeners
-                const nameInput = card.querySelector('.group-name-input');
-                const promptSelect = card.querySelector('.prompt-select-input');
-                const promptCustom = card.querySelector('.prompt-custom-input');
-                const removeBtn = card.querySelector('.remove-group-btn');
-
-                nameInput.addEventListener('change', () => {
-                    group.name = nameInput.value || `Group ${groupLetter}`;
-                });
-
-                promptSelect.addEventListener('change', () => {
-                    if (promptSelect.value === 'custom') {
-                        promptCustom.classList.add('active');
-                        group.prompt = promptCustom.value || '';
-                    } else {
-                        promptCustom.classList.remove('active');
-                        group.prompt = promptSelect.value;
-                    }
-                });
-
-                promptCustom.addEventListener('input', () => {
-                    if (promptSelect.value === 'custom') {
-                        group.prompt = promptCustom.value;
-                    }
-                });
-
-                if (removeBtn) {
-                    removeBtn.addEventListener('click', () => {
-                        state.groups = state.groups.filter(g => g.id !== group.id);
-                        renderGroupsSetup();
-                    });
-                }
-
-                // Set prompt select to current value if it's a preset
-                if (PRESET_PROMPTS.includes(group.prompt)) {
-                    promptSelect.value = group.prompt;
-                } else if (group.prompt) {
-                    promptSelect.value = 'custom';
-                    promptCustom.classList.add('active');
-                }
-            });
-        }
-
-        document.getElementById('add-group-btn').addEventListener('click', () => {
-            if (state.groups.length < 6) {
-                const newId = `group-${Date.now()}`;
-                const groupLetter = String.fromCharCode(65 + state.groups.length);
-                state.groups.push({
-                    id: newId,
-                    name: `Group ${groupLetter}`,
-                    prompt: ''
-                });
-                renderGroupsSetup();
+        document.getElementById('groups-plus').addEventListener('click', () => {
+            if (groupCount < 8) {
+                groupCount++;
+                document.getElementById('group-count-display').textContent = groupCount;
             }
         });
 
@@ -1975,20 +2006,17 @@
                 return;
             }
 
-            if (state.groups.length === 0) {
-                showError('Please create at least one group');
-                return;
+            // Build groups array from count
+            const groups = [];
+            for (let i = 0; i < groupCount; i++) {
+                const letter = String.fromCharCode(65 + i);
+                groups.push({ name: 'Group ' + letter, prompt: 'Group ' + letter });
             }
-
-            const invalidGroups = state.groups.filter(g => !g.prompt);
-            if (invalidGroups.length > 0) {
-                showError('Please set a prompt for all groups');
-                return;
-            }
+            state.groups = groups;
 
             socket.emit('create-session', {
                 activeCategories: state.activeCategories,
-                groups: state.groups
+                groups: groups
             });
         });
 
@@ -2003,10 +2031,10 @@
             dashboard.innerHTML = '';
 
             state.groups.forEach((group, index) => {
-                const aggregate = state.groupAggregates[group.id] || {
+                const aggregateData = state.groupAggregates[group.id] || {
                     memberCount: 0,
                     members: [],
-                    dimensions: {}
+                    aggregate: { dimensions: {} }
                 };
 
                 const card = document.createElement('div');
@@ -2014,13 +2042,14 @@
                 card.id = `dashboard-group-${group.id}`;
 
                 const groupLetter = String.fromCharCode(65 + index);
+                const membersList = aggregateData.members || [];
 
                 card.innerHTML = `
                     <div class="dashboard-group-name">Group ${groupLetter}</div>
                     <div class="dashboard-group-prompt">"${group.prompt}"</div>
-                    <div class="members-count">${aggregate.memberCount} member${aggregate.memberCount !== 1 ? 's' : ''}</div>
+                    <div class="members-count">${aggregateData.memberCount} member${aggregateData.memberCount !== 1 ? 's' : ''}</div>
                     <div class="members-list">
-                        ${aggregate.members.length > 0 ? aggregate.members.map(m => `<div>• ${m}</div>`).join('') : '<div style="color: #999;">Waiting for students...</div>'}
+                        ${membersList.length > 0 ? membersList.map(m => `<div>• ${m}</div>`).join('') : '<div style="color: #999;">Waiting for students...</div>'}
                     </div>
                 `;
 
@@ -2029,8 +2058,8 @@
         }
 
         function updateDashboardGroup(groupId) {
-            const aggregate = state.groupAggregates[groupId];
-            if (!aggregate) return;
+            const aggregateData = state.groupAggregates[groupId];
+            if (!aggregateData) return;
 
             const groupIndex = state.groups.findIndex(g => g.id === groupId);
             if (groupIndex === -1) return;
@@ -2040,13 +2069,14 @@
 
             const groupLetter = String.fromCharCode(65 + groupIndex);
             const group = state.groups[groupIndex];
+            const membersList = aggregateData.members || [];
 
             card.innerHTML = `
                 <div class="dashboard-group-name">Group ${groupLetter}</div>
                 <div class="dashboard-group-prompt">"${group.prompt}"</div>
-                <div class="members-count">${aggregate.memberCount} member${aggregate.memberCount !== 1 ? 's' : ''}</div>
+                <div class="members-count">${aggregateData.memberCount} member${aggregateData.memberCount !== 1 ? 's' : ''}</div>
                 <div class="members-list">
-                    ${aggregate.members.length > 0 ? aggregate.members.map(m => `<div>• ${m}</div>`).join('') : '<div style="color: #999;">Waiting for students...</div>'}
+                    ${membersList.length > 0 ? membersList.map(m => `<div>• ${m}</div>`).join('') : '<div style="color: #999;">Waiting for students...</div>'}
                 </div>
             `;
         }
@@ -2071,7 +2101,7 @@
 
         function renderStudentView() {
             document.getElementById('student-group-name').textContent = state.groupName;
-            document.getElementById('student-group-prompt').textContent = state.groupPrompt;
+            // Group prompt removed -- assigned verbally by instructor
 
             renderCategoryTabs();
             renderOptions();
@@ -2128,7 +2158,7 @@
                     option.choices.forEach(choice => {
                         const btn = document.createElement('button');
                         btn.className = 'choice-button';
-                        btn.textContent = choice.label;
+                        btn.textContent = choice.text;
 
                         if (state.selectedOptions[option.id] === choice.id) {
                             btn.classList.add('selected');
@@ -2214,6 +2244,11 @@
         // =====================================================================
 
         function updateProfileCard() {
+            // Ensure state.profile and dimensions exist
+            if (!state.profile || !state.profile.dimensions) {
+                return;
+            }
+
             // Update stats in card
             updateStatBar('stat-warmth', state.profile.dimensions.warmth, 'warmth');
             updateStatBar('stat-honesty', state.profile.dimensions.honesty, 'honesty');
@@ -2223,18 +2258,25 @@
             updateStatBar('stat-availability', state.profile.dimensions.availability, 'availability');
 
             // Update completion
-            const completion = Math.round(state.profile.completionPercent);
-            document.getElementById('completion-percent').textContent = completion;
+            const completion = Math.round(state.profile.completionPercent || 0);
+            const completionEl = document.getElementById('completion-percent');
+            if (completionEl) {
+                completionEl.textContent = completion;
+            }
 
             // Update badges
             const badgesContainer = document.getElementById('badges-container');
-            badgesContainer.innerHTML = '';
-            state.profile.badges.forEach(badge => {
-                const badgeEl = document.createElement('div');
-                badgeEl.className = 'badge';
-                badgeEl.textContent = badge;
-                badgesContainer.appendChild(badgeEl);
-            });
+            if (badgesContainer) {
+                badgesContainer.innerHTML = '';
+                if (state.profile.badges && Array.isArray(state.profile.badges)) {
+                    state.profile.badges.forEach(badge => {
+                        const badgeEl = document.createElement('div');
+                        badgeEl.className = 'badge';
+                        badgeEl.textContent = badge;
+                        badgesContainer.appendChild(badgeEl);
+                    });
+                }
+            }
 
             // Draw avatar
             const canvas = document.getElementById('avatar-canvas');
@@ -2243,12 +2285,18 @@
             }
 
             // Also update modal if it's open
-            if (document.getElementById('profile-modal').classList.contains('active')) {
+            const modal = document.getElementById('profile-modal');
+            if (modal && modal.classList.contains('active')) {
                 updateProfileModal();
             }
         }
 
         function updateProfileModal() {
+            // Ensure state.profile and dimensions exist
+            if (!state.profile || !state.profile.dimensions) {
+                return;
+            }
+
             // Update stats in modal
             updateStatBar('modal-stat-warmth', state.profile.dimensions.warmth, 'warmth');
             updateStatBar('modal-stat-honesty', state.profile.dimensions.honesty, 'honesty');
@@ -2259,13 +2307,17 @@
 
             // Update badges
             const badgesContainer = document.getElementById('modal-badges-container');
-            badgesContainer.innerHTML = '';
-            state.profile.badges.forEach(badge => {
-                const badgeEl = document.createElement('div');
-                badgeEl.className = 'badge';
-                badgeEl.textContent = badge;
-                badgesContainer.appendChild(badgeEl);
-            });
+            if (badgesContainer) {
+                badgesContainer.innerHTML = '';
+                if (state.profile.badges && Array.isArray(state.profile.badges)) {
+                    state.profile.badges.forEach(badge => {
+                        const badgeEl = document.createElement('div');
+                        badgeEl.className = 'badge';
+                        badgeEl.textContent = badge;
+                        badgesContainer.appendChild(badgeEl);
+                    });
+                }
+            }
 
             // Draw avatar
             const canvas = document.getElementById('avatar-canvas-modal');
@@ -2301,7 +2353,7 @@
         // =====================================================================
 
         function drawAvatar(canvas, profile, size) {
-            if (!canvas) return;
+            if (!canvas || !profile || !profile.dimensions) return;
 
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
@@ -2314,7 +2366,8 @@
             const centerY = size / 2;
 
             // Determine warmth for glow color
-            const warmth = profile.dimensions.warmth / 100;
+            // warmth is -1 to 1, normalize to 0-1 range
+            const warmth = ((profile.dimensions.warmth || 0) + 1) / 2;
             let glowColor;
             if (warmth > 0.5) {
                 // Warm side: orange/coral
@@ -2339,7 +2392,7 @@
             ctx.fillRect(0, 0, size, size);
 
             // Calculate opacity based on completion
-            const opacity = 0.6 + (profile.completionPercent / 100) * 0.4;
+            const opacity = 0.6 + ((profile.completionPercent || 0) / 100) * 0.4;
 
             // Create main shape
             const shape = profile.avatarShape || 'circle';

@@ -1587,6 +1587,13 @@
                         </div>
                         <div class="stat-value" id="stat-availability-value">0%</div>
                     </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Transparency</div>
+                        <div class="stat-bar-horizontal">
+                            <div class="stat-bar-fill" id="stat-transparency"></div>
+                        </div>
+                        <div class="stat-value" id="stat-transparency-value">0%</div>
+                    </div>
                 </div>
                 <div class="badges-container" id="badges-container">
                     <!-- Populated by JS -->
@@ -1667,6 +1674,15 @@
                             <div class="stat-bar-fill-full" id="modal-stat-availability"></div>
                         </div>
                     </div>
+                    <div class="stat-row">
+                        <div class="stat-label-row">
+                            <span>Transparency</span>
+                            <span id="modal-stat-transparency-value">0%</span>
+                        </div>
+                        <div class="stat-bar-background">
+                            <div class="stat-bar-fill-full" id="modal-stat-transparency"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="badges-container" id="modal-badges-container">
                     <!-- Populated by JS -->
@@ -1702,7 +1718,8 @@
                     autonomy: 0,
                     memory: 0,
                     boundaries: 0,
-                    availability: 0
+                    availability: 0,
+                    transparency: 0
                 },
                 badges: [],
                 features: [],
@@ -2196,8 +2213,8 @@
 
                     sliderContainer.innerHTML = `
                         <div class="slider-labels">
-                            <span>${option.minLabel}</span>
-                            <span>${option.maxLabel}</span>
+                            <span>${option.labels ? option.labels[0] : ''}</span>
+                            <span>${option.labels ? option.labels[1] : ''}</span>
                         </div>
                         <input
                             type="range"
@@ -2256,6 +2273,7 @@
             updateStatBar('stat-memory', state.profile.dimensions.memory, 'memory');
             updateStatBar('stat-boundaries', state.profile.dimensions.boundaries, 'boundaries');
             updateStatBar('stat-availability', state.profile.dimensions.availability, 'availability');
+            updateStatBar('stat-transparency', state.profile.dimensions.transparency, 'transparency');
 
             // Update completion
             const completion = Math.round(state.profile.completionPercent || 0);
@@ -2304,6 +2322,7 @@
             updateStatBar('modal-stat-memory', state.profile.dimensions.memory, 'memory');
             updateStatBar('modal-stat-boundaries', state.profile.dimensions.boundaries, 'boundaries');
             updateStatBar('modal-stat-availability', state.profile.dimensions.availability, 'availability');
+            updateStatBar('modal-stat-transparency', state.profile.dimensions.transparency, 'transparency');
 
             // Update badges
             const badgesContainer = document.getElementById('modal-badges-container');
@@ -2719,6 +2738,13 @@
                                 <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.availability, 'availability')}%"></div>
                             </div>
                             <span class="comparison-stat-value">${dimToPercent(dims.availability, 'availability')}%</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-stat-label">Transparency</span>
+                            <div class="comparison-stat-bar">
+                                <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.transparency, 'transparency')}%"></div>
+                            </div>
+                            <span class="comparison-stat-value">${dimToPercent(dims.transparency, 'transparency')}%</span>
                         </div>
                     </div>
 

@@ -1138,7 +1138,8 @@ function computeProfile(selections) {
     autonomy: 0,
     memory: 0,
     boundaries: 0,
-    availability: 0
+    availability: 0,
+    transparency: 0
   };
 
   const badges = new Set();
@@ -1191,6 +1192,7 @@ function computeProfile(selections) {
   dimensions.memory = Math.max(0, Math.min(1, dimensions.memory));
   dimensions.boundaries = Math.max(0, Math.min(1, dimensions.boundaries));
   dimensions.availability = Math.max(0, Math.min(1, dimensions.availability));
+  dimensions.transparency = Math.max(0, Math.min(1, dimensions.transparency));
 
   // Compute avatar color based on warmth
   let hue = 200; // Cool blue
@@ -1217,7 +1219,7 @@ function computeProfile(selections) {
 function computeGroupAggregate(groupMembers) {
   if (groupMembers.length === 0) {
     return {
-      dimensions: { warmth: 0, honesty: 0, autonomy: 0, memory: 0, boundaries: 0, availability: 0 },
+      dimensions: { warmth: 0, honesty: 0, autonomy: 0, memory: 0, boundaries: 0, availability: 0, transparency: 0 },
       badges: [],
       features: [],
       avatarShape: 'circle',
@@ -1232,7 +1234,8 @@ function computeGroupAggregate(groupMembers) {
     autonomy: 0,
     memory: 0,
     boundaries: 0,
-    availability: 0
+    availability: 0,
+    transparency: 0
   };
 
   const allBadges = [];

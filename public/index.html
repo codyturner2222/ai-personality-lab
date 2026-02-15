@@ -1748,7 +1748,7 @@
             state.roomCode = data.roomCode;
             // Convert groups object to array format for easier iteration
             state.groups = Object.entries(data.groups).map(([id, group]) => ({
-                id: parseInt(id),
+                id: String(id),
                 name: group.name,
                 prompt: group.prompt,
                 members: []
@@ -1761,7 +1761,7 @@
                     memberCount: 0,
                     members: [],
                     aggregate: {
-                        dimensions: { warmth: 0, honesty: 0, autonomy: 0, memory: 0, boundaries: 0, availability: 0 },
+                        dimensions: { warmth: 0, honesty: 0, autonomy: 0, memory: 0, boundaries: 0, availability: 0, transparency: 0 },
                         badges: [],
                         features: [],
                         avatarShape: 'circle',
@@ -2075,10 +2075,11 @@
         }
 
         function updateDashboardGroup(groupId) {
+            groupId = String(groupId);
             const aggregateData = state.groupAggregates[groupId];
             if (!aggregateData) return;
 
-            const groupIndex = state.groups.findIndex(g => g.id === groupId);
+            const groupIndex = state.groups.findIndex(g => String(g.id) === groupId);
             if (groupIndex === -1) return;
 
             const card = document.getElementById(`dashboard-group-${groupId}`);
@@ -2124,28 +2125,43 @@
             renderOptions();
         }
 
+        // Build a lookup from categoryId to human-readable name
+        const CATEGORY_NAME_MAP = {};
+        CATEGORIES.forEach(c => { CATEGORY_NAME_MAP[c.id] = c.name; });
+
         function renderCategoryTabs() {
             const tabsContainer = document.getElementById('category-tabs');
             tabsContainer.innerHTML = '';
 
-            state.activeOptions.forEach((option, index) => {
+            // Extract unique categories from activeOptions (preserving order)
+            const seen = {};
+            const uniqueCategories = [];
+            state.activeOptions.forEach(option => {
+                if (!seen[option.categoryId]) {
+                    seen[option.categoryId] = true;
+                    uniqueCategories.push(option.categoryId);
+                }
+            });
+
+            uniqueCategories.forEach((catId, index) => {
                 const tab = document.createElement('button');
                 tab.className = 'category-tab';
-                if (index === 0) tab.classList.add('active');
+                if (catId === state.currentCategoryId) tab.classList.add('active');
 
                 // Count answered questions in this category
-                const categoryOptions = state.activeOptions.filter(o => o.categoryId === option.categoryId);
+                const categoryOptions = state.activeOptions.filter(o => o.categoryId === catId);
                 const answeredCount = categoryOptions.filter(o => state.selectedOptions[o.id] !== undefined).length;
 
+                const catName = CATEGORY_NAME_MAP[catId] || catId;
                 tab.innerHTML = `
-                    <span>${option.categoryName}</span>
+                    <span>${catName}</span>
                     <div class="progress-indicator">${answeredCount}/${categoryOptions.length}</div>
                 `;
 
                 tab.addEventListener('click', () => {
                     document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
-                    state.currentCategoryId = option.categoryId;
+                    state.currentCategoryId = catId;
                     renderOptions();
                 });
 

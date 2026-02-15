@@ -1,0 +1,16 @@
+{
+  "name": "ai-personality-lab",
+  "version": "1.0.0",
+  "description": "AI Personality Lab - University classroom activity for designing AI companions",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["ai", "personality", "classroom", "socket.io"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4"
+  }
+}

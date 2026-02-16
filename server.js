@@ -10,11 +10,15 @@ const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
 if (apiKey) {
   try {
     // Handle both default and named export patterns
-    const AnthropicClass = AnthropicModule.default || AnthropicModule;
+    const AnthropicClass = AnthropicModule.default || AnthropicModule.Anthropic || AnthropicModule;
+    console.log('SDK module type:', typeof AnthropicModule, '| default:', typeof AnthropicModule.default, '| Anthropic:', typeof AnthropicModule.Anthropic);
+    console.log('Using constructor:', typeof AnthropicClass, AnthropicClass.name || 'anonymous');
     anthropic = new AnthropicClass({ apiKey });
     console.log('Anthropic API initialized (key starts with: ' + apiKey.substring(0, 10) + '...)');
+    console.log('anthropic.messages:', typeof (anthropic.messages));
   } catch (initErr) {
     console.error('Failed to initialize Anthropic SDK:', initErr.message);
+    console.error('Stack:', initErr.stack);
   }
 } else {
   console.log('No ANTHROPIC_API_KEY found -- chat features disabled');
@@ -42,6 +46,29 @@ app.get('/api/chat-status', (req, res) => {
     keyConfigured: !!apiKey,
     keyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'none'
   });
+});
+
+// Diagnostic endpoint that actually tests the API call
+app.get('/api/chat-test', async (req, res) => {
+  if (!anthropic) {
+    return res.json({ success: false, error: 'Anthropic client not initialized' });
+  }
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 50,
+      messages: [{ role: 'user', content: 'Say hello in exactly 5 words.' }]
+    });
+    res.json({ success: true, response: response.content[0].text });
+  } catch (err) {
+    res.json({
+      success: false,
+      error: err.message,
+      status: err.status,
+      type: err.constructor.name,
+      headers: err.headers || null
+    });
+  }
 });
 
 // ============================================================================
@@ -1299,7 +1326,7 @@ async function generateChatResponse(session, groupId, userMessage) {
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 250,
       system: session.systemPrompts[groupId],
       messages: recentHistory
@@ -1840,7 +1867,7 @@ io.on('connection', (socket) => {
       const systemPrompt = session.systemPrompts[chatGroupId] || 'You are a friendly AI companion.';
 
       const response = await anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 250,
         system: systemPrompt,
         messages: recentHistory

@@ -2,13 +2,20 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const Anthropic = require('@anthropic-ai/sdk');
+const AnthropicModule = require('@anthropic-ai/sdk');
 
 // Initialize Anthropic client (API key from environment variable)
 let anthropic = null;
-if (process.env.ANTHROPIC_API_KEY) {
-  anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  console.log('Anthropic API initialized');
+const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+if (apiKey) {
+  try {
+    // Handle both default and named export patterns
+    const AnthropicClass = AnthropicModule.default || AnthropicModule;
+    anthropic = new AnthropicClass({ apiKey });
+    console.log('Anthropic API initialized (key starts with: ' + apiKey.substring(0, 10) + '...)');
+  } catch (initErr) {
+    console.error('Failed to initialize Anthropic SDK:', initErr.message);
+  }
 } else {
   console.log('No ANTHROPIC_API_KEY found -- chat features disabled');
 }
@@ -27,6 +34,15 @@ const PORT = process.env.PORT || 3000;
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+
+// Health check endpoint for API diagnostics
+app.get('/api/chat-status', (req, res) => {
+  res.json({
+    chatEnabled: !!anthropic,
+    keyConfigured: !!apiKey,
+    keyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'none'
+  });
+});
 
 // ============================================================================
 // CATEGORIES CONSTANT

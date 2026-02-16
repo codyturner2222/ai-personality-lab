@@ -1839,9 +1839,17 @@ io.on('connection', (socket) => {
         chatGroupId
       });
     } catch (err) {
-      console.error('Anthropic API error:', err.message);
+      console.error('Anthropic API error:', err.message, err.status || '');
+      let errorMsg = 'Your AI is gathering its thoughts... (connection issue, try again)';
+      if (err.status === 401) {
+        errorMsg = 'API key is invalid or not configured correctly. Check the ANTHROPIC_API_KEY environment variable on Render.';
+      } else if (err.status === 429) {
+        errorMsg = 'Too many requests -- wait a moment and try again.';
+      } else if (err.message) {
+        errorMsg = 'Error: ' + err.message.substring(0, 120);
+      }
       socket.emit('chat-response', {
-        text: 'Your AI is gathering its thoughts... (connection issue, try again)',
+        text: errorMsg,
         error: true,
         chatGroupId
       });

@@ -2740,14 +2740,16 @@
             canvas.height = size;
 
             // Get dimension values with safe defaults
+            // Amplify values so face is expressive even with few questions answered
             const d = dimensions || {};
-            const w = d.warmth || 0;          // -1 to 1
-            const hon = d.honesty || 0;       // 0 to 1
-            const aut = d.autonomy || 0;      // 0 to 1
-            const mem = d.memory || 0;        // 0 to 1
-            const bnd = d.boundaries || 0;    // 0 to 1
-            const avl = d.availability || 0;  // 0 to 1
-            const trn = d.transparency || 0;  // 0 to 1
+            const amp = 2.5; // amplification factor for 0-1 dims
+            const w = Math.max(-1, Math.min(1, (d.warmth || 0) * amp));   // -1 to 1
+            const hon = Math.min(1, (d.honesty || 0) * amp);              // 0 to 1
+            const aut = Math.min(1, (d.autonomy || 0) * amp);             // 0 to 1
+            const mem = Math.min(1, (d.memory || 0) * amp);               // 0 to 1
+            const bnd = Math.min(1, (d.boundaries || 0) * amp);           // 0 to 1
+            const avl = Math.max(0.3, Math.min(1, 0.3 + (d.availability || 0) * amp)); // 0.3 to 1
+            const trn = Math.min(1, (d.transparency || 0) * amp);         // 0 to 1
 
             const warmthNorm = (w + 1) / 2;  // normalize to 0-1
             const s = size / 250;             // scale factor (250px is reference)
@@ -3090,7 +3092,7 @@
                 }).join('');
 
                 card.innerHTML = `
-                    <div class="comparison-group-name">Group ${groupLetter}: ${groupData.groupName || ''}</div>
+                    <div class="comparison-group-name">${groupData.groupName || ('Group ' + groupLetter)}</div>
 
                     <div class="comparison-avatar">
                         <canvas class="comparison-avatar-canvas" width="200" height="200"></canvas>

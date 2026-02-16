@@ -1517,6 +1517,51 @@ io.on('connection', (socket) => {
   });
 
   // Student/group joins session
+  // Host reconnection after page refresh
+  socket.on('rejoin-host', (payload) => {
+    const { roomCode } = payload;
+    const session = sessions[roomCode];
+    if (!session) {
+      socket.emit('error', { message: 'Session no longer exists' });
+      return;
+    }
+
+    // Update host socket to the new connection
+    session.hostSocket = socket.id;
+    socket.join(roomCode);
+
+    // Rebuild group data for the host
+    const groups = {};
+    for (const [groupId, group] of Object.entries(session.groups)) {
+      groups[groupId] = { name: group.name, prompt: group.prompt };
+    }
+
+    const activeDimensions = getActiveDimensions(session.activeCategories);
+
+    // Send session state back to host
+    socket.emit('host-rejoined', {
+      roomCode,
+      groups,
+      activeDimensions,
+      state: session.state
+    });
+
+    // Send current group aggregates
+    for (const [groupId, group] of Object.entries(session.groups)) {
+      const groupMembers = group.members.map(id => session.students[id]).filter(Boolean);
+      const aggregate = computeGroupAggregate(groupMembers);
+      socket.emit('group-updated', {
+        groupId,
+        groupName: group.name,
+        aggregate,
+        memberCount: groupMembers.length,
+        members: groupMembers.map(m => m.name)
+      });
+    }
+
+    console.log('Host rejoined session ' + roomCode);
+  });
+
   socket.on('join-session', (payload) => {
     const { roomCode, studentName, requestedGroupId } = payload;
     const session = sessions[roomCode];

@@ -1901,6 +1901,51 @@
 
         socket.on('connect', () => {
             console.log('Connected to server');
+
+            // Try to reconnect as host if we have a saved session
+            try {
+                const saved = sessionStorage.getItem('ailab_host');
+                if (saved) {
+                    const { roomCode } = JSON.parse(saved);
+                    if (roomCode && state.currentView === 'landing') {
+                        socket.emit('rejoin-host', { roomCode });
+                    }
+                }
+            } catch(e) {}
+        });
+
+        // Host reconnection response
+        socket.on('host-rejoined', (data) => {
+            state.role = 'host';
+            state.roomCode = data.roomCode;
+            if (data.activeDimensions) state.activeDimensions = data.activeDimensions;
+
+            state.groups = Object.entries(data.groups).map(([id, group]) => ({
+                id: String(id),
+                name: group.name,
+                prompt: group.prompt,
+                members: []
+            }));
+
+            // Initialize groupAggregates
+            state.groups.forEach(group => {
+                if (!state.groupAggregates[group.id]) {
+                    state.groupAggregates[group.id] = {
+                        groupId: group.id,
+                        groupName: group.name,
+                        memberCount: 0,
+                        members: [],
+                        aggregate: {
+                            dimensions: { warmth: 0, honesty: 0, autonomy: 0, memory: 0, boundaries: 0, availability: 0, transparency: 0 },
+                            badges: [], features: [], avatarShape: 'circle', avatarColor: '#7C4DFF'
+                        }
+                    };
+                }
+            });
+
+            showView('host-dashboard');
+            renderDashboard();
+            showSuccess('Reconnected to session ' + data.roomCode);
         });
 
         socket.on('error', (data) => {
@@ -1935,6 +1980,9 @@
             });
             showView('host-dashboard');
             renderDashboard();
+
+            // Save session for reconnection on refresh
+            try { sessionStorage.setItem('ailab_host', JSON.stringify({ roomCode: state.roomCode })); } catch(e) {}
         });
 
         socket.on('session-joined', (data) => {
@@ -1974,6 +2022,11 @@
                 members: existingMembers
             };
             updateDashboardGroup(data.groupId);
+
+            // Auto-refresh comparison view if it's currently showing
+            if (state.currentView === 'comparison') {
+                renderComparisonView();
+            }
         });
 
         // Real-time fault lines -- another group made a choice
@@ -2382,6 +2435,7 @@
             if (confirm('Are you sure you want to reset the session? All student selections will be cleared.')) {
                 socket.emit('reset-session', { roomCode: state.roomCode });
                 state.groupAggregates = {};
+                try { sessionStorage.removeItem('ailab_host'); } catch(e) {}
                 renderDashboard();
             }
         });

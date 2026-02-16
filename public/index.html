@@ -2742,15 +2742,15 @@
             const d = dimensions || {};
             const amp = 2.5;
             const w = Math.max(-1, Math.min(1, (d.warmth || 0) * amp));
-            const hon = Math.min(1, (d.honesty || 0) * amp);
-            const aut = Math.min(1, (d.autonomy || 0) * amp);
-            const mem = Math.min(1, (d.memory || 0) * amp);
-            const bnd = Math.min(1, (d.boundaries || 0) * amp);
+            const hon = Math.max(0, Math.min(1, (d.honesty || 0) * amp));
+            const aut = Math.max(0, Math.min(1, (d.autonomy || 0) * amp));
+            const mem = Math.max(0, Math.min(1, (d.memory || 0) * amp));
+            const bnd = Math.max(0, Math.min(1, (d.boundaries || 0) * amp));
             const avl = Math.max(0.3, Math.min(1, 0.3 + (d.availability || 0) * amp));
-            const trn = Math.min(1, (d.transparency || 0) * amp);
+            const trn = Math.max(0, Math.min(1, (d.transparency || 0) * amp));
 
-            const warmthNorm = (w + 1) / 2;
-            const s = size / 250;
+            const warmthNorm = (w + 1) / 2; // 0=cold, 1=warm
+            const sc = size / 250;
             const cx = size / 2;
             const cy = size / 2;
 
@@ -2758,19 +2758,18 @@
             ctx.fillStyle = '#0F0A2A';
             ctx.fillRect(0, 0, size, size);
 
-            ctx.globalAlpha = 0.4 + avl * 0.6;
+            ctx.globalAlpha = 0.4 + avl * 0.6; // Availability = brightness
 
             // === COLOR PALETTE from warmth ===
-            // Warm = coral/rose/amber, Cold = blue/cyan/violet, Neutral = purple
             let primaryHue, secondaryHue, coreSat, coreLit;
             if (warmthNorm > 0.6) {
-                primaryHue = 340 + warmthNorm * 30; // rose to coral
-                secondaryHue = 25 + warmthNorm * 15; // amber
+                primaryHue = 340 + warmthNorm * 30;
+                secondaryHue = 25 + warmthNorm * 15;
                 coreSat = 55 + warmthNorm * 30;
                 coreLit = 55 + warmthNorm * 15;
             } else if (warmthNorm < 0.4) {
-                primaryHue = 210 + (1 - warmthNorm) * 40; // blue to cyan
-                secondaryHue = 250 + (1 - warmthNorm) * 20; // violet
+                primaryHue = 210 + (1 - warmthNorm) * 40;
+                secondaryHue = 250 + (1 - warmthNorm) * 20;
                 coreSat = 50 + (1 - warmthNorm) * 30;
                 coreLit = 50 + (1 - warmthNorm) * 15;
             } else {
@@ -2780,185 +2779,227 @@
                 coreLit = 58;
             }
 
-            // === OUTER GLOW (Memory = glow intensity/reach) ===
-            if (size >= 40) {
-                const glowR = (0.38 + mem * 0.15) * size;
-                const glow = ctx.createRadialGradient(cx, cy, size * 0.12, cx, cy, glowR);
-                glow.addColorStop(0, 'hsla(' + primaryHue + ', ' + coreSat + '%, ' + coreLit + '%, ' + (0.15 + mem * 0.25) + ')');
-                glow.addColorStop(0.6, 'hsla(' + secondaryHue + ', ' + (coreSat * 0.6) + '%, ' + (coreLit * 0.8) + '%, ' + (0.05 + mem * 0.1) + ')');
-                glow.addColorStop(1, 'hsla(' + primaryHue + ', ' + coreSat + '%, ' + coreLit + '%, 0)');
+            // Head geometry
+            var headW = size * 0.58;
+            var headH = size * 0.52;
+            var headX = cx - headW / 2;
+            var headY = cy - headH / 2 + size * 0.05;
+            // Autonomy: high = angular corners, low = soft/round
+            var cornerR = headW * (0.12 + (1 - aut) * 0.22);
+
+            // Rounded rect helper
+            function rRect(x, y, w, h, r) {
+                r = Math.min(r, w / 2, h / 2);
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + w - r, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.closePath();
+            }
+
+            // === MEMORY GLOW (outer aura around robot) ===
+            if (mem > 0.05 && size >= 30) {
+                var glowR = size * (0.38 + mem * 0.18);
+                var gCy = cy + size * 0.05;
+                var glow = ctx.createRadialGradient(cx, gCy, headW * 0.15, cx, gCy, glowR);
+                glow.addColorStop(0, 'hsla(' + primaryHue + ',' + coreSat + '%,' + coreLit + '%,' + (0.08 + mem * 0.18) + ')');
+                glow.addColorStop(0.55, 'hsla(' + secondaryHue + ',' + (coreSat * 0.6) + '%,' + (coreLit * 0.8) + '%,' + (0.02 + mem * 0.07) + ')');
+                glow.addColorStop(1, 'hsla(' + primaryHue + ',' + coreSat + '%,' + coreLit + '%,0)');
                 ctx.fillStyle = glow;
                 ctx.beginPath();
-                ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+                ctx.arc(cx, gCy, glowR, 0, Math.PI * 2);
                 ctx.fill();
             }
 
-            // === BOUNDARY RINGS (concentric, subtle) ===
-            if (bnd > 0.1 && size >= 30) {
-                const numRings = bnd > 0.6 ? 3 : bnd > 0.3 ? 2 : 1;
-                for (let i = 0; i < numRings; i++) {
-                    const ringR = (0.32 + i * 0.06) * size;
-                    const ringAlpha = (0.08 + bnd * 0.18) * (1 - i * 0.3);
-                    ctx.strokeStyle = 'hsla(' + secondaryHue + ', ' + (coreSat * 0.7) + '%, 70%, ' + ringAlpha + ')';
-                    ctx.lineWidth = Math.max(0.5, (1.5 - i * 0.4) * s);
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-            }
+            // === ANTENNA (taller with autonomy, tip glows with memory) ===
+            if (size >= 25) {
+                var antX = cx;
+                var antBaseY = headY;
+                var antH = size * (0.07 + aut * 0.07);
+                var antTopY = antBaseY - antH;
 
-            // === CORE ORB ===
-            const coreR = 0.22 * size;
-
-            // Multi-layer gradient orb
-            const orbGrad = ctx.createRadialGradient(
-                cx - coreR * 0.25, cy - coreR * 0.3, coreR * 0.05,
-                cx, cy, coreR
-            );
-            orbGrad.addColorStop(0, 'hsla(' + primaryHue + ', ' + (coreSat + 15) + '%, ' + (coreLit + 20) + '%, 0.95)');
-            orbGrad.addColorStop(0.4, 'hsla(' + primaryHue + ', ' + coreSat + '%, ' + coreLit + '%, 0.9)');
-            orbGrad.addColorStop(0.75, 'hsla(' + secondaryHue + ', ' + (coreSat * 0.8) + '%, ' + (coreLit * 0.7) + '%, 0.85)');
-            orbGrad.addColorStop(1, 'hsla(' + secondaryHue + ', ' + (coreSat * 0.5) + '%, ' + (coreLit * 0.4) + '%, 0.7)');
-
-            ctx.fillStyle = orbGrad;
-            ctx.beginPath();
-            ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Gloss highlight
-            if (size >= 50) {
-                const glossGrad = ctx.createRadialGradient(
-                    cx - coreR * 0.3, cy - coreR * 0.35, 0,
-                    cx - coreR * 0.1, cy - coreR * 0.15, coreR * 0.7
-                );
-                glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
-                glossGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.08)');
-                glossGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-                ctx.fillStyle = glossGrad;
-                ctx.beginPath();
-                ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // === INNER SYMBOL (Autonomy + Honesty shape the core pattern) ===
-            if (size >= 50) {
-                ctx.save();
-                ctx.translate(cx, cy);
-
-                // Autonomy controls rotation of inner pattern
-                const rotAngle = aut * Math.PI * 0.4;
-                ctx.rotate(rotAngle);
-
-                // Honesty controls how "open" the inner shape is (more points = more open/direct)
-                const points = Math.round(3 + hon * 4); // 3 to 7 points
-                const innerR = coreR * (0.3 + hon * 0.15);
-                const outerR = coreR * (0.5 + aut * 0.15);
-
-                ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.25 + hon * 0.25) + ')';
-                ctx.lineWidth = Math.max(0.5, 1.2 * s);
+                ctx.strokeStyle = 'hsla(' + primaryHue + ',' + (coreSat * 0.7) + '%,' + (coreLit * 0.8) + '%,0.5)';
+                ctx.lineWidth = Math.max(1, 2.2 * sc);
                 ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
                 ctx.beginPath();
-
-                for (let i = 0; i <= points; i++) {
-                    const angle = (i / points) * Math.PI * 2 - Math.PI / 2;
-                    const r = i % 2 === 0 ? outerR : innerR;
-                    const x = Math.cos(angle) * r;
-                    const y = Math.sin(angle) * r;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.closePath();
+                ctx.moveTo(antX, antBaseY + 2 * sc);
+                ctx.lineTo(antX, antTopY);
                 ctx.stroke();
 
-                // Central dot
-                ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.4 + trn * 0.4) + ')';
-                const dotR = Math.max(1, (1.5 + trn * 2) * s);
-                ctx.beginPath();
-                ctx.arc(0, 0, dotR, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.restore();
-            }
-
-            // === TRANSPARENCY: radial lines emanating from core ===
-            if (trn > 0.2 && size >= 60) {
-                const numLines = Math.round(4 + trn * 8);
-                const lineLen = coreR * (0.3 + trn * 0.4);
-                ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.06 + trn * 0.12) + ')';
-                ctx.lineWidth = Math.max(0.5, 0.8 * s);
-                ctx.lineCap = 'round';
-
-                for (let i = 0; i < numLines; i++) {
-                    const angle = (i / numLines) * Math.PI * 2;
-                    const startR = coreR + 3 * s;
-                    const endR = coreR + 3 * s + lineLen;
+                var tipR = Math.max(1.5, (2.5 + mem * 2) * sc);
+                if (size >= 40) {
+                    var tipGlow = ctx.createRadialGradient(antX, antTopY, 0, antX, antTopY, tipR * 3);
+                    tipGlow.addColorStop(0, 'hsla(' + primaryHue + ',' + (coreSat + 10) + '%,' + (coreLit + 15) + '%,0.7)');
+                    tipGlow.addColorStop(0.5, 'hsla(' + primaryHue + ',' + coreSat + '%,' + coreLit + '%,0.15)');
+                    tipGlow.addColorStop(1, 'hsla(' + primaryHue + ',' + coreSat + '%,' + coreLit + '%,0)');
+                    ctx.fillStyle = tipGlow;
                     ctx.beginPath();
-                    ctx.moveTo(cx + Math.cos(angle) * startR, cy + Math.sin(angle) * startR);
-                    ctx.lineTo(cx + Math.cos(angle) * endR, cy + Math.sin(angle) * endR);
-                    ctx.stroke();
-                }
-            }
-
-            // === ORBITING DOTS (complexity from honesty + autonomy) ===
-            if (size >= 60) {
-                const numDots = Math.round(2 + (hon + aut) * 2.5);
-                const orbitR = coreR + (8 + bnd * 6) * s;
-                const dotSize = Math.max(1, (1.5 + warmthNorm * 1.5) * s);
-
-                for (let i = 0; i < numDots; i++) {
-                    const angle = (i / numDots) * Math.PI * 2 + aut * 1.2;
-                    const dx = cx + Math.cos(angle) * orbitR;
-                    const dy = cy + Math.sin(angle) * orbitR;
-                    const dotAlpha = 0.3 + warmthNorm * 0.4;
-                    ctx.fillStyle = 'hsla(' + (primaryHue + i * 30) + ', ' + coreSat + '%, 75%, ' + dotAlpha + ')';
-                    ctx.beginPath();
-                    ctx.arc(dx, dy, dotSize, 0, Math.PI * 2);
+                    ctx.arc(antX, antTopY, tipR * 3, 0, Math.PI * 2);
                     ctx.fill();
                 }
+                ctx.fillStyle = 'hsla(' + primaryHue + ',' + (coreSat + 10) + '%,' + (coreLit + 20) + '%,1)';
+                ctx.beginPath();
+                ctx.arc(antX, antTopY, tipR, 0, Math.PI * 2);
+                ctx.fill();
             }
 
-            // === WARMTH INDICATOR: soft arc at bottom (smile analog) ===
+            // === HEAD (rounded screen with gradient) ===
+            var borderW = Math.max(1, (1.2 + bnd * 2.5) * sc);
+
+            var screenGrad = ctx.createLinearGradient(headX, headY, headX, headY + headH);
+            screenGrad.addColorStop(0, 'hsla(' + primaryHue + ',' + (coreSat * 0.25) + '%,14%,0.92)');
+            screenGrad.addColorStop(0.5, 'hsla(' + primaryHue + ',' + (coreSat * 0.15) + '%,9%,0.96)');
+            screenGrad.addColorStop(1, 'hsla(' + primaryHue + ',' + (coreSat * 0.25) + '%,11%,0.92)');
+
+            rRect(headX, headY, headW, headH, cornerR);
+            ctx.fillStyle = screenGrad;
+            ctx.fill();
+
+            // Border (boundaries = thickness + opacity)
+            rRect(headX, headY, headW, headH, cornerR);
+            ctx.strokeStyle = 'hsla(' + primaryHue + ',' + coreSat + '%,' + coreLit + '%,' + (0.35 + bnd * 0.45) + ')';
+            ctx.lineWidth = borderW;
+            ctx.stroke();
+
+            // Screen shine highlight
+            if (size >= 45) {
+                var shGrad = ctx.createLinearGradient(headX, headY, headX, headY + headH * 0.35);
+                shGrad.addColorStop(0, 'rgba(255,255,255,0.055)');
+                shGrad.addColorStop(1, 'rgba(255,255,255,0)');
+                rRect(headX + borderW, headY + borderW, headW - borderW * 2, headH * 0.35, cornerR * 0.7);
+                ctx.fillStyle = shGrad;
+                ctx.fill();
+            }
+
+            // === SIDE ACCENTS (ear bumps) ===
             if (size >= 50) {
-                const arcR = coreR * 0.55;
-                const arcY = cy + coreR * 0.15;
-                // Warm = upward arc (smile), cold = downward arc, neutral = straight
-                const arcCurve = w * 0.5;
-                const arcAlpha = 0.2 + Math.abs(w) * 0.3;
+                var earW = headW * 0.07;
+                var earH = headH * 0.18;
+                var earY = headY + headH * 0.35;
+                ctx.fillStyle = 'hsla(' + primaryHue + ',' + (coreSat * 0.5) + '%,' + (coreLit * 0.5) + '%,0.35)';
+                rRect(headX - earW * 1.3, earY, earW, earH, earW * 0.35);
+                ctx.fill();
+                rRect(headX + headW + earW * 0.3, earY, earW, earH, earW * 0.35);
+                ctx.fill();
+            }
 
-                ctx.strokeStyle = 'rgba(255, 255, 255, ' + arcAlpha + ')';
-                ctx.lineWidth = Math.max(1, 2 * s);
-                ctx.lineCap = 'round';
+            // === EYES (shape driven by warmth, size by honesty) ===
+            var eyeY = headY + headH * 0.38;
+            var eyeSpacing = headW * 0.19;
+            var eyeBase = Math.max(2, headW * 0.095);
+            var eyeSize = eyeBase * (0.65 + hon * 0.55);
 
+            var eyeClr = 'hsla(' + primaryHue + ',' + (coreSat + 15) + '%,' + (coreLit + 20) + '%,' + (0.7 + hon * 0.3) + ')';
+
+            // Eye glow halos
+            if (size >= 45) {
+                [cx - eyeSpacing, cx + eyeSpacing].forEach(function(ex) {
+                    var eGlow = ctx.createRadialGradient(ex, eyeY, 0, ex, eyeY, eyeSize * 2.8);
+                    eGlow.addColorStop(0, 'hsla(' + primaryHue + ',' + (coreSat + 10) + '%,' + (coreLit + 12) + '%,0.12)');
+                    eGlow.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = eGlow;
+                    ctx.beginPath();
+                    ctx.arc(ex, eyeY, eyeSize * 2.8, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            if (warmthNorm > 0.6) {
+                // Warm: soft round LED eyes with highlight
+                [cx - eyeSpacing, cx + eyeSpacing].forEach(function(ex) {
+                    ctx.fillStyle = eyeClr;
+                    ctx.beginPath();
+                    ctx.arc(ex, eyeY, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    if (size >= 45) {
+                        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                        ctx.beginPath();
+                        ctx.arc(ex - eyeSize * 0.25, eyeY - eyeSize * 0.25, eyeSize * 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            } else if (warmthNorm < 0.4) {
+                // Cold: angular diamond/slit eyes
+                [cx - eyeSpacing, cx + eyeSpacing].forEach(function(ex) {
+                    ctx.fillStyle = eyeClr;
+                    ctx.beginPath();
+                    ctx.moveTo(ex - eyeSize * 1.4, eyeY);
+                    ctx.lineTo(ex, eyeY - eyeSize * 0.55);
+                    ctx.lineTo(ex + eyeSize * 1.4, eyeY);
+                    ctx.lineTo(ex, eyeY + eyeSize * 0.55);
+                    ctx.closePath();
+                    ctx.fill();
+                });
+            } else {
+                // Neutral: simple round dots
+                [cx - eyeSpacing, cx + eyeSpacing].forEach(function(ex) {
+                    ctx.fillStyle = eyeClr;
+                    ctx.beginPath();
+                    ctx.arc(ex, eyeY, eyeSize * 0.85, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            // === MOUTH (warmth drives smile/frown/neutral) ===
+            var mouthY = headY + headH * 0.7;
+            var mouthW = headW * (0.22 + hon * 0.1);
+            var mouthThick = Math.max(1, (1.8 + warmthNorm * 1.2) * sc);
+
+            ctx.strokeStyle = 'hsla(' + primaryHue + ',' + (coreSat + 10) + '%,' + (coreLit + 15) + '%,' + (0.45 + Math.abs(w) * 0.45) + ')';
+            ctx.lineWidth = mouthThick;
+            ctx.lineCap = 'round';
+
+            if (w > 0.15) {
+                // Warm: smile (bottom of circle, center above mouth)
                 ctx.beginPath();
-                if (arcCurve > 0.05) {
-                    // Warm: upward arc
-                    ctx.arc(cx, arcY + arcR * 0.5, arcR, Math.PI + 0.4, Math.PI * 2 - 0.4);
-                } else if (arcCurve < -0.05) {
-                    // Cold: downward arc
-                    ctx.arc(cx, arcY - arcR * 0.7, arcR, 0.4, Math.PI - 0.4);
-                } else {
-                    // Neutral: flat line
-                    ctx.moveTo(cx - arcR * 0.6, arcY);
-                    ctx.lineTo(cx + arcR * 0.6, arcY);
-                }
+                ctx.arc(cx, mouthY - mouthW * 0.35, mouthW * 0.65, 0.35, Math.PI - 0.35);
+                ctx.stroke();
+            } else if (w < -0.15) {
+                // Cold: frown (top of circle, center below mouth)
+                ctx.beginPath();
+                ctx.arc(cx, mouthY + mouthW * 0.45, mouthW * 0.65, Math.PI + 0.35, Math.PI * 2 - 0.35);
+                ctx.stroke();
+            } else {
+                // Neutral: flat line
+                ctx.beginPath();
+                ctx.moveTo(cx - mouthW * 0.5, mouthY);
+                ctx.lineTo(cx + mouthW * 0.5, mouthY);
                 ctx.stroke();
             }
 
-            // === TWIN DOTS (eye analog -- minimal, abstract) ===
-            {
-                const eyeY = cy - coreR * 0.2;
-                const eyeSpacing = coreR * 0.35;
-                const eyeR = Math.max(1.2, (2 + hon * 1.5) * s);
-                const eyeAlpha = 0.6 + hon * 0.35;
+            // === CHEEK GLOW (very warm personalities get rosy cheeks) ===
+            if (warmthNorm > 0.7 && size >= 55) {
+                var cheekA = (warmthNorm - 0.7) * 0.6;
+                var cheekR = eyeSize * 1.3;
+                ctx.fillStyle = 'hsla(' + (primaryHue - 10) + ',' + (coreSat + 10) + '%,' + (coreLit + 5) + '%,' + (cheekA * 0.2) + ')';
+                ctx.beginPath();
+                ctx.arc(cx - eyeSpacing - cheekR * 0.5, eyeY + eyeSize * 1.6, cheekR, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(cx + eyeSpacing + cheekR * 0.5, eyeY + eyeSize * 1.6, cheekR, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
-                ctx.fillStyle = 'rgba(255, 255, 255, ' + eyeAlpha + ')';
-                ctx.beginPath();
-                ctx.arc(cx - eyeSpacing, eyeY, eyeR, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(cx + eyeSpacing, eyeY, eyeR, 0, Math.PI * 2);
-                ctx.fill();
+            // === TRANSPARENCY: status LED dots along chin ===
+            if (trn > 0.15 && size >= 45) {
+                var numLeds = Math.round(2 + trn * 4);
+                var ledSpacing = headW * 0.6 / (numLeds + 1);
+                var ledY = headY + headH * 0.87;
+                var ledR = Math.max(1, 1.6 * sc);
+
+                for (var li = 0; li < numLeds; li++) {
+                    var lx = cx - headW * 0.3 + ledSpacing * (li + 1);
+                    ctx.fillStyle = 'hsla(' + (primaryHue + li * 25) + ',' + coreSat + '%,' + (coreLit + 10) + '%,' + (0.3 + trn * 0.45) + ')';
+                    ctx.beginPath();
+                    ctx.arc(lx, ledY, ledR, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
 
             ctx.globalAlpha = 1;

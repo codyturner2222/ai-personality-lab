@@ -1130,6 +1130,27 @@ function generateRoomCode() {
   return code;
 }
 
+// Determine which dimensions are actually affected by the active categories
+function getActiveDimensions(activeCategories) {
+  const activeDims = new Set();
+  const activeOpts = OPTIONS.filter(o => activeCategories.includes(o.categoryId));
+  for (const opt of activeOpts) {
+    if (opt.type === 'slider') {
+      // Sliders directly affect their primary dimension
+      if (opt.id === 'per_01') activeDims.add('warmth');
+      if (opt.id === 'hon_01') activeDims.add('honesty');
+    }
+    if (opt.choices) {
+      for (const choice of opt.choices) {
+        if (choice.profileModifiers) {
+          Object.keys(choice.profileModifiers).forEach(k => activeDims.add(k));
+        }
+      }
+    }
+  }
+  return Array.from(activeDims);
+}
+
 // Compute student profile from selections
 function computeProfile(selections) {
   const dimensions = {
@@ -1342,7 +1363,8 @@ io.on('connection', (socket) => {
     };
 
     socket.join(roomCode);
-    socket.emit('session-created', { roomCode, groups });
+    const activeDimensions = getActiveDimensions(payload.activeCategories);
+    socket.emit('session-created', { roomCode, groups, activeDimensions });
     console.log(`Session created: ${roomCode}`);
   });
 
@@ -1385,12 +1407,14 @@ io.on('connection', (socket) => {
 
     socket.join(roomCode);
     const activeOptions = OPTIONS.filter(o => session.activeCategories.includes(o.categoryId));
+    const activeDimensions = getActiveDimensions(session.activeCategories);
     socket.emit('session-joined', {
       roomCode,
       groupId: assignedGroupId,
       groupName: session.groups[assignedGroupId].name,
       groupPrompt: session.groups[assignedGroupId].prompt,
-      activeOptions
+      activeOptions,
+      activeDimensions
     });
 
     // Notify host
@@ -1490,7 +1514,8 @@ io.on('connection', (socket) => {
       });
     }
 
-    io.to(roomCode).emit('comparison-data', { groups: groupData });
+    const activeDimensions = getActiveDimensions(session.activeCategories);
+    io.to(roomCode).emit('comparison-data', { groups: groupData, activeDimensions });
   });
 
   // Reset session

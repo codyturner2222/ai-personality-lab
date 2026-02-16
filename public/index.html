@@ -1561,70 +1561,8 @@
                 <div class="profile-modal-avatar">
                     <canvas id="avatar-canvas-modal" width="250" height="250"></canvas>
                 </div>
-                <div class="stats-full">
-                    <div class="stat-bar-full">
-                        <div class="stat-bar-label">
-                            <span>Warmth</span>
-                            <span id="modal-stat-warmth-value">0%</span>
-                        </div>
-                        <div class="stat-bar-background">
-                            <div class="stat-bar-fill-full" id="modal-stat-warmth"></div>
-                        </div>
-                    </div>
-                    <div class="stat-bar-full">
-                        <div class="stat-bar-label">
-                            <span>Honesty</span>
-                            <span id="modal-stat-honesty-value">0%</span>
-                        </div>
-                        <div class="stat-bar-background">
-                            <div class="stat-bar-fill-full" id="modal-stat-honesty"></div>
-                        </div>
-                    </div>
-                    <div class="stat-bar-full">
-                        <div class="stat-bar-label">
-                            <span>Autonomy</span>
-                            <span id="modal-stat-autonomy-value">0%</span>
-                        </div>
-                        <div class="stat-bar-background">
-                            <div class="stat-bar-fill-full" id="modal-stat-autonomy"></div>
-                        </div>
-                    </div>
-                    <div class="stat-bar-full">
-                        <div class="stat-bar-label">
-                            <span>Memory</span>
-                            <span id="modal-stat-memory-value">0%</span>
-                        </div>
-                        <div class="stat-bar-background">
-                            <div class="stat-bar-fill-full" id="modal-stat-memory"></div>
-                        </div>
-                    </div>
-                    <div class="stat-bar-full">
-                        <div class="stat-bar-label">
-                            <span>Boundaries</span>
-                            <span id="modal-stat-boundaries-value">0%</span>
-                        </div>
-                        <div class="stat-bar-background">
-                            <div class="stat-bar-fill-full" id="modal-stat-boundaries"></div>
-                        </div>
-                    </div>
-                    <div class="stat-bar-full">
-                        <div class="stat-bar-label">
-                            <span>Availability</span>
-                            <span id="modal-stat-availability-value">0%</span>
-                        </div>
-                        <div class="stat-bar-background">
-                            <div class="stat-bar-fill-full" id="modal-stat-availability"></div>
-                        </div>
-                    </div>
-                    <div class="stat-row">
-                        <div class="stat-label-row">
-                            <span>Transparency</span>
-                            <span id="modal-stat-transparency-value">0%</span>
-                        </div>
-                        <div class="stat-bar-background">
-                            <div class="stat-bar-fill-full" id="modal-stat-transparency"></div>
-                        </div>
-                    </div>
+                <div class="stats-full" id="modal-stats-container">
+                    <!-- Dynamically populated based on active dimensions -->
                 </div>
                 <div class="badges-container" id="modal-badges-container">
                     <!-- Populated by JS -->
@@ -1648,6 +1586,7 @@
             studentName: null,
             studentId: null,
             activeCategories: [],
+            activeDimensions: ['warmth', 'honesty', 'autonomy', 'memory', 'boundaries', 'availability', 'transparency'],
             groups: [],
             activeOptions: [],
             currentCategoryId: null,
@@ -1688,6 +1627,7 @@
 
         socket.on('session-created', (data) => {
             state.roomCode = data.roomCode;
+            if (data.activeDimensions) state.activeDimensions = data.activeDimensions;
             // Convert groups object to array format for easier iteration
             state.groups = Object.entries(data.groups).map(([id, group]) => ({
                 id: String(id),
@@ -1721,6 +1661,7 @@
             state.groupName = data.groupName;
             state.groupPrompt = data.groupPrompt;
             state.activeOptions = data.activeOptions;
+            if (data.activeDimensions) state.activeDimensions = data.activeDimensions;
 
             // Find the first category to show
             if (state.activeOptions.length > 0) {
@@ -1766,6 +1707,7 @@
 
         socket.on('comparison-data', (data) => {
             state.groupAggregates = {};
+            if (data.activeDimensions) state.activeDimensions = data.activeDimensions;
             data.groups.forEach(group => {
                 state.groupAggregates[group.groupId] = group;
             });
@@ -2244,20 +2186,41 @@
             }
         }
 
-        function updateProfileModal() {
-            // Ensure state.profile and dimensions exist
-            if (!state.profile || !state.profile.dimensions) {
-                return;
-            }
+        // Dimension display names and colors
+        const DIM_LABELS = {
+            warmth: { label: 'Warmth', color: '#FF6B6B' },
+            honesty: { label: 'Honesty', color: '#51CF66' },
+            autonomy: { label: 'Autonomy', color: '#FFB300' },
+            memory: { label: 'Memory', color: '#7C4DFF' },
+            boundaries: { label: 'Boundaries', color: '#FF8A65' },
+            availability: { label: 'Availability', color: '#00BCD4' },
+            transparency: { label: 'Transparency', color: '#4FC3F7' }
+        };
 
-            // Update stats in modal
-            updateStatBar('modal-stat-warmth', state.profile.dimensions.warmth, 'warmth');
-            updateStatBar('modal-stat-honesty', state.profile.dimensions.honesty, 'honesty');
-            updateStatBar('modal-stat-autonomy', state.profile.dimensions.autonomy, 'autonomy');
-            updateStatBar('modal-stat-memory', state.profile.dimensions.memory, 'memory');
-            updateStatBar('modal-stat-boundaries', state.profile.dimensions.boundaries, 'boundaries');
-            updateStatBar('modal-stat-availability', state.profile.dimensions.availability, 'availability');
-            updateStatBar('modal-stat-transparency', state.profile.dimensions.transparency, 'transparency');
+        function updateProfileModal() {
+            if (!state.profile || !state.profile.dimensions) return;
+
+            // Dynamically build stat bars for active dimensions only
+            const statsContainer = document.getElementById('modal-stats-container');
+            if (statsContainer) {
+                statsContainer.innerHTML = '';
+                state.activeDimensions.forEach(dim => {
+                    const info = DIM_LABELS[dim] || { label: dim, color: '#7C4DFF' };
+                    const pct = dimToPercent(state.profile.dimensions[dim] || 0, dim);
+                    const barEl = document.createElement('div');
+                    barEl.className = 'stat-bar-full';
+                    barEl.innerHTML = `
+                        <div class="stat-bar-label">
+                            <span>${info.label}</span>
+                            <span>${pct}%</span>
+                        </div>
+                        <div class="stat-bar-background">
+                            <div class="stat-bar-fill-full" style="width: ${pct}%; background: ${info.color};"></div>
+                        </div>
+                    `;
+                    statsContainer.appendChild(barEl);
+                });
+            }
 
             // Update badges
             const badgesContainer = document.getElementById('modal-badges-container');
@@ -2623,64 +2586,30 @@
                 const card = document.createElement('div');
                 card.className = 'comparison-card';
 
+                // Build stat bars only for active dimensions
+                const statsHTML = state.activeDimensions.map(dim => {
+                    const info = DIM_LABELS[dim] || { label: dim, color: '#7C4DFF' };
+                    const pct = dimToPercent(dims[dim], dim);
+                    return `
+                        <div class="comparison-stat">
+                            <span class="comparison-stat-label">${info.label}</span>
+                            <div class="comparison-stat-bar">
+                                <div class="comparison-stat-bar-fill" style="width: ${pct}%; background: ${info.color};"></div>
+                            </div>
+                            <span class="comparison-stat-value">${pct}%</span>
+                        </div>
+                    `;
+                }).join('');
+
                 card.innerHTML = `
                     <div class="comparison-group-name">Group ${groupLetter}: ${groupData.groupName || ''}</div>
-                    <div class="comparison-group-prompt">"${groupData.prompt || ''}"</div>
 
                     <div class="comparison-avatar">
                         <canvas class="comparison-avatar-canvas" width="200" height="200"></canvas>
                     </div>
 
                     <div class="comparison-stats">
-                        <div class="comparison-stat">
-                            <span class="comparison-stat-label">Warmth</span>
-                            <div class="comparison-stat-bar">
-                                <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.warmth, 'warmth')}%"></div>
-                            </div>
-                            <span class="comparison-stat-value">${dimToPercent(dims.warmth, 'warmth')}%</span>
-                        </div>
-                        <div class="comparison-stat">
-                            <span class="comparison-stat-label">Honesty</span>
-                            <div class="comparison-stat-bar">
-                                <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.honesty, 'honesty')}%"></div>
-                            </div>
-                            <span class="comparison-stat-value">${dimToPercent(dims.honesty, 'honesty')}%</span>
-                        </div>
-                        <div class="comparison-stat">
-                            <span class="comparison-stat-label">Autonomy</span>
-                            <div class="comparison-stat-bar">
-                                <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.autonomy, 'autonomy')}%"></div>
-                            </div>
-                            <span class="comparison-stat-value">${dimToPercent(dims.autonomy, 'autonomy')}%</span>
-                        </div>
-                        <div class="comparison-stat">
-                            <span class="comparison-stat-label">Memory</span>
-                            <div class="comparison-stat-bar">
-                                <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.memory, 'memory')}%"></div>
-                            </div>
-                            <span class="comparison-stat-value">${dimToPercent(dims.memory, 'memory')}%</span>
-                        </div>
-                        <div class="comparison-stat">
-                            <span class="comparison-stat-label">Boundaries</span>
-                            <div class="comparison-stat-bar">
-                                <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.boundaries, 'boundaries')}%"></div>
-                            </div>
-                            <span class="comparison-stat-value">${dimToPercent(dims.boundaries, 'boundaries')}%</span>
-                        </div>
-                        <div class="comparison-stat">
-                            <span class="comparison-stat-label">Availability</span>
-                            <div class="comparison-stat-bar">
-                                <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.availability, 'availability')}%"></div>
-                            </div>
-                            <span class="comparison-stat-value">${dimToPercent(dims.availability, 'availability')}%</span>
-                        </div>
-                        <div class="comparison-stat">
-                            <span class="comparison-stat-label">Transparency</span>
-                            <div class="comparison-stat-bar">
-                                <div class="comparison-stat-bar-fill" style="width: ${dimToPercent(dims.transparency, 'transparency')}%"></div>
-                            </div>
-                            <span class="comparison-stat-value">${dimToPercent(dims.transparency, 'transparency')}%</span>
-                        </div>
+                        ${statsHTML}
                     </div>
 
                     <div class="comparison-badges">

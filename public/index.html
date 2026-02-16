@@ -2173,10 +2173,10 @@
                 completionEl.textContent = completion;
             }
 
-            // Draw small avatar in compact card
+            // Draw small radar chart in compact card
             const canvas = document.getElementById('avatar-canvas');
             if (canvas) {
-                drawAvatar(canvas, state.profile, 44);
+                drawRadarChart(canvas, state.profile.dimensions, state.activeDimensions, 44, '#7C4DFF');
             }
 
             // Also update modal if it's open
@@ -2236,10 +2236,10 @@
                 }
             }
 
-            // Draw avatar
+            // Draw radar chart
             const canvas = document.getElementById('avatar-canvas-modal');
             if (canvas) {
-                drawAvatar(canvas, state.profile, 250);
+                drawRadarChart(canvas, state.profile.dimensions, state.activeDimensions, 250, '#7C4DFF');
             }
         }
 
@@ -2269,8 +2269,8 @@
         // AVATAR CANVAS RENDERING
         // =====================================================================
 
-        function drawAvatar(canvas, profile, size) {
-            if (!canvas || !profile || !profile.dimensions) return;
+        function drawRadarChart(canvas, dimensions, activeDimensions, size, color) {
+            if (!canvas || !dimensions || !activeDimensions || activeDimensions.length === 0) return;
 
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
@@ -2281,249 +2281,99 @@
 
             const centerX = size / 2;
             const centerY = size / 2;
+            const maxRadius = size * 0.35;
 
-            // Determine warmth for glow color
-            // warmth is -1 to 1, normalize to 0-1 range
-            const warmth = ((profile.dimensions.warmth || 0) + 1) / 2;
-            let glowColor;
-            if (warmth > 0.5) {
-                // Warm side: orange/coral
-                const hue = 20 + (warmth - 0.5) * 20; // 20-30
-                glowColor = `hsl(${hue}, 100%, 50%)`;
-            } else {
-                // Cool side: blue/teal
-                const hue = 200 - (0.5 - warmth) * 50; // 200-250
-                glowColor = `hsl(${hue}, 100%, 50%)`;
-            }
-
-            // Clear canvas
-            ctx.fillStyle = 'rgba(15, 10, 42, 1)';
+            // Clear canvas with dark background
+            ctx.fillStyle = '#0F0A2A';
             ctx.fillRect(0, 0, size, size);
 
-            // Draw glow background
-            const glowGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size * 0.6);
-            glowGradient.addColorStop(0, glowColor + '30');
-            glowGradient.addColorStop(0.7, glowColor + '10');
-            glowGradient.addColorStop(1, glowColor + '00');
-            ctx.fillStyle = glowGradient;
-            ctx.fillRect(0, 0, size, size);
+            const numSpokes = activeDimensions.length;
+            const angleSlice = (Math.PI * 2) / numSpokes;
 
-            // Calculate opacity based on completion
-            const opacity = 0.6 + ((profile.completionPercent || 0) / 100) * 0.4;
+            // Draw grid background (concentric circles) - skip for very small sizes
+            if (size >= 80) {
+                ctx.strokeStyle = 'rgba(200, 200, 200, 0.1)';
+                ctx.lineWidth = 1;
 
-            // Create main shape
-            const shape = profile.avatarShape || 'circle';
-            const radius = size * 0.3;
-
-            // Draw shape based on type
-            ctx.globalAlpha = opacity;
-
-            if (shape === 'circle') {
-                // Simple circle
-                const gradient = ctx.createRadialGradient(centerX - 20, centerY - 20, 0, centerX, centerY, radius * 1.2);
-                gradient.addColorStop(0, profile.avatarColor + '80');
-                gradient.addColorStop(1, profile.avatarColor);
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (shape === 'humanoid') {
-                // Head + shoulders silhouette
-                ctx.fillStyle = profile.avatarColor;
-
-                // Head
-                ctx.beginPath();
-                ctx.arc(centerX, centerY - radius * 0.2, radius * 0.8, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Shoulders
-                ctx.beginPath();
-                ctx.ellipse(centerX, centerY + radius * 0.5, radius * 1.2, radius * 0.6, 0, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (shape === 'geometric') {
-                // Rotating hexagon/diamond
-                ctx.fillStyle = profile.avatarColor;
-                ctx.strokeStyle = profile.avatarColor + '80';
-                ctx.lineWidth = 2;
-
-                const rotation = (Date.now() / 20) % (Math.PI * 2);
-                ctx.save();
-                ctx.translate(centerX, centerY);
-                ctx.rotate(rotation);
-
-                // Draw hexagon
-                ctx.beginPath();
-                for (let i = 0; i < 6; i++) {
-                    const angle = (i * Math.PI) / 3;
-                    const x = radius * Math.cos(angle);
-                    const y = radius * Math.sin(angle);
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.restore();
-            } else if (shape === 'abstract') {
-                // Organic blob using circles
-                ctx.fillStyle = profile.avatarColor;
-
-                const time = Date.now() / 2000;
-                const blobs = [
-                    { x: centerX + Math.cos(time) * radius * 0.3, y: centerY + Math.sin(time) * radius * 0.3, r: radius * 0.6 },
-                    { x: centerX + Math.cos(time + 2) * radius * 0.3, y: centerY + Math.sin(time + 2) * radius * 0.3, r: radius * 0.6 },
-                    { x: centerX, y: centerY, r: radius * 0.8 }
-                ];
-
-                blobs.forEach(blob => {
+                // Draw 4 concentric circles at 25%, 50%, 75%, 100%
+                for (let i = 1; i <= 4; i++) {
+                    const radius = (maxRadius / 4) * i;
                     ctx.beginPath();
-                    ctx.arc(blob.x, blob.y, blob.r, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            } else if (shape === 'animal') {
-                // Simple animal-like form
-                ctx.fillStyle = profile.avatarColor;
-
-                // Body
-                ctx.beginPath();
-                ctx.ellipse(centerX, centerY, radius * 0.9, radius * 1.1, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Head
-                ctx.beginPath();
-                ctx.arc(centerX, centerY - radius * 0.8, radius * 0.6, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Ears
-                ctx.beginPath();
-                ctx.arc(centerX - radius * 0.4, centerY - radius * 1.3, radius * 0.3, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(centerX + radius * 0.4, centerY - radius * 1.3, radius * 0.3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Draw features
-            const features = profile.features || [];
-
-            if (features.includes('eyes')) {
-                ctx.globalAlpha = opacity;
-                ctx.fillStyle = '#ffffff';
-
-                // Left eye
-                ctx.beginPath();
-                ctx.arc(centerX - radius * 0.3, centerY - radius * 0.1, radius * 0.15, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Right eye
-                ctx.beginPath();
-                ctx.arc(centerX + radius * 0.3, centerY - radius * 0.1, radius * 0.15, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Pupils
-                ctx.fillStyle = '#000000';
-                const pupilSize = radius * 0.08;
-                ctx.beginPath();
-                ctx.arc(centerX - radius * 0.3, centerY - radius * 0.1, pupilSize, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(centerX + radius * 0.3, centerY - radius * 0.1, pupilSize, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            if (features.includes('mouth')) {
-                ctx.globalAlpha = opacity;
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
-                ctx.lineCap = 'round';
-
-                const warmth = profile.dimensions.warmth / 100;
-                ctx.beginPath();
-
-                if (warmth > 0.5) {
-                    // Smile
-                    ctx.arc(centerX, centerY + radius * 0.1, radius * 0.2, 0, Math.PI);
-                } else if (warmth < 0.5) {
-                    // Straight line
-                    ctx.moveTo(centerX - radius * 0.2, centerY + radius * 0.1);
-                    ctx.lineTo(centerX + radius * 0.2, centerY + radius * 0.1);
-                } else {
-                    // Neutral
-                    ctx.arc(centerX, centerY + radius * 0.1, radius * 0.15, 0, Math.PI);
+                    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                    ctx.stroke();
                 }
-
-                ctx.stroke();
             }
 
-            if (features.includes('aura')) {
-                ctx.globalAlpha = Math.min(opacity * 0.5, 0.4);
-                ctx.strokeStyle = glowColor;
-                ctx.lineWidth = 3;
+            // Calculate polygon points
+            const points = activeDimensions.map((dim, index) => {
+                const value = dimensions[dim] || 0;
+                const percentage = dimToPercent(value, dim);
+                const normalizedValue = percentage / 100;
+                const radius = normalizedValue * maxRadius;
 
-                // Pulsing aura
-                const pulse = Math.sin(Date.now() / 500) * 0.1 + 0.9;
+                const angle = angleSlice * index - Math.PI / 2; // Start from top
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+
+                return { x, y, angle, dim };
+            });
+
+            // Draw spokes and labels - skip labels for very small sizes
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
+            ctx.lineWidth = 1;
+
+            points.forEach((point, index) => {
+                // Draw spoke to outer edge (not just to data point)
+                const spokeX = centerX + maxRadius * Math.cos(point.angle);
+                const spokeY = centerY + maxRadius * Math.sin(point.angle);
                 ctx.beginPath();
-                ctx.arc(centerX, centerY, radius * 1.3 * pulse, 0, Math.PI * 2);
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(spokeX, spokeY);
                 ctx.stroke();
-            }
 
-            if (features.includes('glow')) {
-                ctx.globalAlpha = Math.min(opacity * 0.6, 0.5);
-                const glowGrad = ctx.createRadialGradient(centerX, centerY, radius * 0.5, centerX, centerY, radius * 1.5);
-                glowGrad.addColorStop(0, glowColor + '40');
-                glowGrad.addColorStop(1, glowColor + '00');
-                ctx.fillStyle = glowGrad;
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius * 1.5, 0, Math.PI * 2);
-                ctx.fill();
-            }
+                // Draw labels for medium and large sizes
+                if (size >= 80) {
+                    const labelDim = activeDimensions[index];
+                    const labelInfo = DIM_LABELS[labelDim] || { label: labelDim, color: '#7C4DFF' };
+                    const shortLabel = labelInfo.label.substring(0, 3).toUpperCase();
 
-            if (features.includes('crown')) {
-                ctx.globalAlpha = opacity;
-                ctx.fillStyle = profile.avatarColor;
-                ctx.strokeStyle = '#FFD700';
-                ctx.lineWidth = 2;
+                    // Calculate label position (beyond the spoke)
+                    const labelDistance = maxRadius + 20;
+                    const labelX = centerX + labelDistance * Math.cos(point.angle);
+                    const labelY = centerY + labelDistance * Math.sin(point.angle);
 
-                // Crown shape
-                const crownY = centerY - radius - radius * 0.4;
-                const crownWidth = radius * 0.5;
+                    // Draw label
+                    ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+                    ctx.font = size >= 150 ? 'bold 11px Inter' : 'bold 9px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(shortLabel, labelX, labelY);
+                }
+            });
 
-                ctx.beginPath();
-                ctx.moveTo(centerX - crownWidth, crownY);
-                ctx.lineTo(centerX - crownWidth * 0.5, crownY - radius * 0.4);
-                ctx.lineTo(centerX, crownY - radius * 0.5);
-                ctx.lineTo(centerX + crownWidth * 0.5, crownY - radius * 0.4);
-                ctx.lineTo(centerX + crownWidth, crownY);
-                ctx.lineTo(centerX + crownWidth, crownY + radius * 0.2);
-                ctx.lineTo(centerX - crownWidth, crownY + radius * 0.2);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-            }
+            // Draw filled polygon
+            ctx.fillStyle = color + '40'; // Semi-transparent fill
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
 
-            if (features.includes('shield')) {
-                ctx.globalAlpha = opacity;
-                ctx.strokeStyle = profile.avatarColor;
-                ctx.lineWidth = 2;
-                ctx.fillStyle = 'transparent';
+            ctx.beginPath();
+            points.forEach((point, index) => {
+                if (index === 0) ctx.moveTo(point.x, point.y);
+                else ctx.lineTo(point.x, point.y);
+            });
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
 
-                // Shield shape
-                const shieldX = centerX;
-                const shieldY = centerY;
-                const shieldSize = radius * 0.8;
-
-                ctx.beginPath();
-                ctx.moveTo(shieldX - shieldSize, shieldY - shieldSize * 0.5);
-                ctx.lineTo(shieldX - shieldSize, shieldY + shieldSize * 0.5);
-                ctx.quadraticCurveTo(shieldX, shieldY + shieldSize, shieldX + shieldSize, shieldY + shieldSize * 0.5);
-                ctx.lineTo(shieldX + shieldSize, shieldY - shieldSize * 0.5);
-                ctx.closePath();
-                ctx.stroke();
-            }
+            // Draw center point
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+            ctx.fill();
 
             ctx.globalAlpha = 1;
         }
+
 
         // =====================================================================
         // PROFILE CARD INTERACTIONS
@@ -2578,10 +2428,14 @@
                 });
             }
 
+            // Group colors for distinct visualization
+            const groupColors = ['#7C4DFF', '#00BCD4', '#FFB300', '#FF6B6B', '#51CF66', '#FF8A65', '#4FC3F7', '#E040FB'];
+
             groupEntries.forEach((groupData, index) => {
                 const aggregate = groupData.aggregate || groupData;
                 const dims = aggregate.dimensions || {};
                 const groupLetter = String.fromCharCode(65 + index);
+                const groupColor = groupColors[index % groupColors.length];
 
                 const card = document.createElement('div');
                 card.className = 'comparison-card';
@@ -2623,14 +2477,11 @@
 
                 container.appendChild(card);
 
-                // Draw avatar for this group
+                // Draw radar chart for this group
                 setTimeout(() => {
                     const canvas = card.querySelector('.comparison-avatar-canvas');
                     if (canvas) {
-                        drawAvatar(canvas, {
-                            ...aggregate,
-                            completionPercent: 100
-                        }, 200);
+                        drawRadarChart(canvas, dims, state.activeDimensions, 200, groupColor);
                     }
                 }, 100);
             });

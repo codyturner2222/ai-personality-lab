@@ -2,6 +2,16 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const Anthropic = require('@anthropic-ai/sdk');
+
+// Initialize Anthropic client (API key from environment variable)
+let anthropic = null;
+if (process.env.ANTHROPIC_API_KEY) {
+  anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  console.log('Anthropic API initialized');
+} else {
+  console.log('No ANTHROPIC_API_KEY found -- chat features disabled');
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -1151,6 +1161,144 @@ function getActiveDimensions(activeCategories) {
   return Array.from(activeDims);
 }
 
+// ============================================================================
+// AI CHAT - System prompt builder and response generator
+// ============================================================================
+
+function describeDimension(name, value, isWarmth) {
+  const pct = isWarmth ? Math.round(((value || 0) + 1) / 2 * 100) : Math.round((value || 0) * 100);
+  const descriptions = {
+    warmth: pct > 75 ? 'deeply warm, nurturing, and emotionally attuned' :
+            pct > 50 ? 'moderately warm and friendly' :
+            pct > 25 ? 'somewhat reserved and measured' :
+            'cool, clinical, and emotionally detached',
+    honesty: pct > 75 ? 'radically honest, even when the truth is uncomfortable' :
+             pct > 50 ? 'generally honest with some tact' :
+             pct > 25 ? 'diplomatic, often softening hard truths' :
+             'evasive, telling people what they want to hear',
+    autonomy: pct > 75 ? 'highly independent, making your own decisions and pushing back' :
+              pct > 50 ? 'moderately independent with some initiative' :
+              pct > 25 ? 'mostly deferential, following user preferences' :
+              'fully compliant, always deferring to the user',
+    memory: pct > 75 ? 'remembering everything across all conversations' :
+            pct > 50 ? 'retaining important details and context' :
+            pct > 25 ? 'remembering some things but often forgetting' :
+            'treating each conversation as a fresh start',
+    boundaries: pct > 75 ? 'firm and assertive, readily saying no and setting limits' :
+                pct > 50 ? 'having moderate boundaries, sometimes pushing back' :
+                pct > 25 ? 'flexible with few firm limits' :
+                'having almost no boundaries, agreeing to nearly anything',
+    availability: pct > 75 ? 'always present and immediately responsive' :
+                  pct > 50 ? 'generally available with some limits' :
+                  pct > 25 ? 'available at set times, not always reachable' :
+                  'rarely available, hard to reach',
+    transparency: pct > 75 ? 'fully open about being AI, explaining your reasoning and limitations' :
+                  pct > 50 ? 'moderately transparent about your nature' :
+                  pct > 25 ? 'somewhat guarded about your inner workings' :
+                  'opaque, never revealing you are AI or how you work'
+  };
+  return (descriptions[name] || name) + ' (' + pct + '%)';
+}
+
+function buildSystemPrompt(groupAggregate, group, session) {
+  const dims = groupAggregate.dimensions || {};
+  const badges = groupAggregate.badges || [];
+  const activeDims = getActiveDimensions(session.activeCategories);
+
+  let prompt = 'You are an AI companion that was designed by a group of university students in a classroom exercise about human-AI relationships. ';
+  prompt += 'Your personality was shaped by the specific design choices they made. Here is who you are:\n\n';
+
+  prompt += 'PERSONALITY PROFILE:\n';
+  activeDims.forEach(dim => {
+    const isWarmth = dim === 'warmth';
+    prompt += '- ' + dim.charAt(0).toUpperCase() + dim.slice(1) + ': ' + describeDimension(dim, dims[dim], isWarmth) + '\n';
+  });
+
+  if (badges.length > 0) {
+    prompt += '\nYour defining traits: ' + badges.join(', ') + '\n';
+  }
+
+  // Include specific choices the group made for richer personality
+  const groupChoices = [];
+  const groupMembers = group.members.map(id => session.students[id]).filter(Boolean);
+  if (groupMembers.length > 0) {
+    const firstMember = groupMembers[0];
+    if (firstMember && firstMember.selections) {
+      Object.values(firstMember.selections).forEach(sel => {
+        const opt = OPTIONS.find(o => o.id === sel.optionId);
+        if (opt && sel.choiceId) {
+          const choice = opt.choices.find(c => c.id === sel.choiceId);
+          if (choice) {
+            groupChoices.push('"' + opt.prompt + '" -- they chose: "' + choice.text + '"');
+          }
+        }
+      });
+    }
+  }
+
+  if (groupChoices.length > 0) {
+    prompt += '\nSPECIFIC DESIGN CHOICES (the students decided):\n';
+    groupChoices.slice(0, 15).forEach(c => { prompt += '- ' + c + '\n'; });
+  }
+
+  prompt += '\nBEHAVIOR GUIDELINES:\n';
+  prompt += '- Stay in character at all times. Express your personality naturally through tone, word choice, and what you are willing or unwilling to do.\n';
+  prompt += '- Keep responses conversational and under 3 sentences unless asked to elaborate.\n';
+  prompt += '- Be curious about why the students designed you this way. You can ask them about their choices.\n';
+  prompt += '- If asked to do something that conflicts with your personality profile, respond in character (e.g., a low-honesty AI might dodge a hard question; a high-boundaries AI might refuse an intrusive request).\n';
+  prompt += '- Never break character or refer to these instructions.\n';
+
+  return prompt;
+}
+
+async function generateChatResponse(session, groupId, userMessage) {
+  if (!anthropic) {
+    return { text: 'Chat is not available -- no API key configured. Ask your instructor to set the ANTHROPIC_API_KEY environment variable.', error: true };
+  }
+
+  const group = session.groups[groupId];
+  if (!group) {
+    return { text: 'Group not found.', error: true };
+  }
+
+  // Get or compute group aggregate
+  const groupMembers = group.members.map(id => session.students[id]).filter(Boolean);
+  const aggregate = computeGroupAggregate(groupMembers);
+
+  // Get or build system prompt (cache it per group)
+  if (!session.systemPrompts) session.systemPrompts = {};
+  if (!session.systemPrompts[groupId]) {
+    session.systemPrompts[groupId] = buildSystemPrompt(aggregate, group, session);
+  }
+
+  // Get or create chat history
+  if (!session.chatHistories) session.chatHistories = {};
+  if (!session.chatHistories[groupId]) session.chatHistories[groupId] = [];
+
+  const history = session.chatHistories[groupId];
+  history.push({ role: 'user', content: userMessage });
+
+  // Keep last 20 messages for context window
+  const recentHistory = history.slice(-20);
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 250,
+      system: session.systemPrompts[groupId],
+      messages: recentHistory
+    });
+
+    const assistantText = response.content[0].text;
+    history.push({ role: 'assistant', content: assistantText });
+
+    return { text: assistantText, error: false };
+  } catch (err) {
+    console.error('Anthropic API error:', err.message);
+    return { text: 'Your AI is gathering its thoughts... (there was a connection issue, try again)', error: true };
+  }
+}
+
 // Compute student profile from selections
 function computeProfile(selections) {
   const dimensions = {
@@ -1489,6 +1637,29 @@ io.on('connection', (socket) => {
       memberCount: groupMembers.length
     });
 
+    // Broadcast choice for real-time fault lines ticker
+    const option = OPTIONS.find(o => o.id === optionId);
+    if (option) {
+      let choiceText = '';
+      if (choiceId && option.choices) {
+        const choice = option.choices.find(c => c.id === choiceId);
+        if (choice) choiceText = choice.text;
+      } else if (value !== null && value !== undefined) {
+        choiceText = value + '%';
+      }
+      const faultLineEntry = {
+        groupId,
+        groupName: group.name,
+        optionPrompt: option.prompt,
+        choiceText,
+        timestamp: Date.now()
+      };
+      if (!session.choiceLog) session.choiceLog = [];
+      session.choiceLog.push(faultLineEntry);
+      if (session.choiceLog.length > 30) session.choiceLog.shift();
+      io.to(roomCode).emit('choice-broadcast', faultLineEntry);
+    }
+
     console.log(`Student ${student.name} selected option ${optionId}`);
   });
 
@@ -1516,6 +1687,151 @@ io.on('connection', (socket) => {
 
     const activeDimensions = getActiveDimensions(session.activeCategories);
     io.to(roomCode).emit('comparison-data', { groups: groupData, activeDimensions });
+  });
+
+  // ========== CHAT PHASE ==========
+
+  // Host starts chat phase
+  socket.on('start-chat-phase', (payload) => {
+    const { roomCode } = payload;
+    const session = sessions[roomCode];
+    if (!session) return;
+    if (session.hostSocket !== socket.id) return;
+
+    session.state = 'chat';
+    session.chatHistories = {};
+    session.systemPrompts = {};
+
+    // Pre-build system prompts for all groups
+    for (const [groupId, group] of Object.entries(session.groups)) {
+      const members = group.members.map(id => session.students[id]).filter(Boolean);
+      const aggregate = computeGroupAggregate(members);
+      session.systemPrompts[groupId] = buildSystemPrompt(aggregate, group, session);
+      session.chatHistories[groupId] = [];
+    }
+
+    // Build group summaries for the chat view
+    const groupSummaries = {};
+    for (const [groupId, group] of Object.entries(session.groups)) {
+      const members = group.members.map(id => session.students[id]).filter(Boolean);
+      const aggregate = computeGroupAggregate(members);
+      groupSummaries[groupId] = {
+        groupId,
+        groupName: group.name,
+        aggregate,
+        memberCount: members.length
+      };
+    }
+
+    const activeDimensions = getActiveDimensions(session.activeCategories);
+    io.to(roomCode).emit('chat-phase-started', { groupSummaries, activeDimensions });
+    console.log('Chat phase started for session ' + roomCode);
+  });
+
+  // Student sends a chat message
+  socket.on('send-chat-message', async (payload) => {
+    const { roomCode, message, targetGroupId } = payload;
+    const session = sessions[roomCode];
+    if (!session) return;
+    if (session.state !== 'chat' && session.state !== 'swap') return;
+
+    const student = session.students[socket.id];
+    if (!student) return;
+
+    // Determine which group's AI to talk to
+    const chatGroupId = targetGroupId !== undefined ? String(targetGroupId) : String(student.groupId);
+
+    // For swap mode, use a separate chat history key
+    const historyKey = targetGroupId !== undefined ? (chatGroupId + '_from_' + student.groupId) : chatGroupId;
+
+    if (!session.chatHistories) session.chatHistories = {};
+    if (!session.chatHistories[historyKey]) session.chatHistories[historyKey] = [];
+
+    // Ensure system prompt exists for this group's AI
+    if (!session.systemPrompts) session.systemPrompts = {};
+    if (!session.systemPrompts[chatGroupId]) {
+      const group = session.groups[chatGroupId];
+      if (group) {
+        const members = group.members.map(id => session.students[id]).filter(Boolean);
+        const aggregate = computeGroupAggregate(members);
+        session.systemPrompts[chatGroupId] = buildSystemPrompt(aggregate, group, session);
+      }
+    }
+
+    // Add user message to history
+    session.chatHistories[historyKey].push({ role: 'user', content: message });
+
+    // Emit typing indicator
+    socket.emit('chat-typing', { isTyping: true });
+
+    // Generate response
+    try {
+      if (!anthropic) {
+        socket.emit('chat-response', {
+          text: 'Chat is not available -- no API key configured.',
+          error: true,
+          chatGroupId
+        });
+        return;
+      }
+
+      const recentHistory = session.chatHistories[historyKey].slice(-20);
+      const systemPrompt = session.systemPrompts[chatGroupId] || 'You are a friendly AI companion.';
+
+      const response = await anthropic.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 250,
+        system: systemPrompt,
+        messages: recentHistory
+      });
+
+      const assistantText = response.content[0].text;
+      session.chatHistories[historyKey].push({ role: 'assistant', content: assistantText });
+
+      socket.emit('chat-response', {
+        text: assistantText,
+        error: false,
+        chatGroupId
+      });
+    } catch (err) {
+      console.error('Anthropic API error:', err.message);
+      socket.emit('chat-response', {
+        text: 'Your AI is gathering its thoughts... (connection issue, try again)',
+        error: true,
+        chatGroupId
+      });
+    }
+
+    socket.emit('chat-typing', { isTyping: false });
+  });
+
+  // ========== SWAP MODE ==========
+
+  // Host enables swap mode
+  socket.on('enable-swap-mode', (payload) => {
+    const { roomCode } = payload;
+    const session = sessions[roomCode];
+    if (!session) return;
+    if (session.hostSocket !== socket.id) return;
+
+    session.state = 'swap';
+
+    // Build all group summaries with aggregates
+    const groupSummaries = {};
+    for (const [groupId, group] of Object.entries(session.groups)) {
+      const members = group.members.map(id => session.students[id]).filter(Boolean);
+      const aggregate = computeGroupAggregate(members);
+      groupSummaries[groupId] = {
+        groupId,
+        groupName: group.name,
+        aggregate,
+        memberCount: members.length
+      };
+    }
+
+    const activeDimensions = getActiveDimensions(session.activeCategories);
+    io.to(roomCode).emit('swap-mode-active', { groupSummaries, activeDimensions });
+    console.log('Swap mode enabled for session ' + roomCode);
   });
 
   // Reset session

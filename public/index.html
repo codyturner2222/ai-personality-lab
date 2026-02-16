@@ -924,6 +924,234 @@
             font-weight: 600;
         }
 
+        /* Real-Time Fault Lines Ticker */
+        .fault-lines-ticker {
+            display: flex;
+            gap: 8px;
+            padding: 0 16px 8px 16px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            min-height: 0;
+            flex-shrink: 0;
+        }
+        .fault-lines-ticker::-webkit-scrollbar { display: none; }
+        .fault-lines-ticker:empty { display: none; }
+
+        .fault-line-card {
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 12px;
+            max-width: 220px;
+            animation: faultLineSlideIn 0.4s ease-out;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        .fault-line-card.fading { opacity: 0; }
+
+        .fault-line-group {
+            font-weight: 600;
+            font-size: 11px;
+            margin-bottom: 3px;
+            letter-spacing: 0.5px;
+        }
+        .fault-line-prompt {
+            color: var(--text-secondary);
+            font-size: 11px;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .fault-line-choice {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        @keyframes faultLineSlideIn {
+            from { transform: translateX(40px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Chat View */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 0;
+        }
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 20px 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .chat-avatar-section {
+            flex-shrink: 0;
+        }
+        .chat-header-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .chat-ai-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-teal);
+        }
+        .chat-ai-traits {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .chat-welcome {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px 20px;
+            font-size: 15px;
+        }
+        .chat-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+        .chat-bubble-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--accent-purple), #5C3DCC);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-bubble-ai {
+            align-self: flex-start;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+        .chat-bubble-error {
+            background: rgba(255, 107, 107, 0.15);
+            border-color: var(--error-color);
+            color: var(--error-color);
+        }
+        .chat-typing {
+            padding: 8px 20px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            animation: typingPulse 1.2s ease-in-out infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingPulse {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1); }
+        }
+        .chat-input-area {
+            display: flex;
+            gap: 8px;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .chat-input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 12px 20px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .chat-input:focus { border-color: var(--accent-purple); }
+        .chat-send-btn {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-teal));
+            color: white;
+            border: none;
+            border-radius: 24px;
+            padding: 12px 24px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .chat-send-btn:hover { transform: scale(1.05); }
+        .chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Swap Gallery */
+        .swap-gallery {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            height: 100%;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 90;
+        }
+        .swap-gallery-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+        .swap-gallery-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .swap-ai-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .swap-ai-card:hover { border-color: var(--accent-teal); transform: translateY(-2px); }
+        .swap-ai-card.active { border-color: var(--accent-gold); box-shadow: 0 0 12px rgba(255, 179, 0, 0.3); }
+        .swap-ai-name {
+            font-weight: 600;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .swap-ai-summary {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+
         /* Profile Card -- compact floating button */
         .profile-card-container {
             position: fixed;
@@ -1502,6 +1730,12 @@
                     <button class="control-button control-button-primary" id="show-comparison-btn">
                         Show Comparison
                     </button>
+                    <button class="control-button" id="start-chat-btn" style="background: linear-gradient(135deg, var(--accent-teal), var(--accent-purple)); color: white; border: none;">
+                        Start Chat Phase
+                    </button>
+                    <button class="control-button" id="enable-swap-btn" style="background: linear-gradient(135deg, var(--accent-gold), #FF6B6B); color: white; border: none; display: none;">
+                        Enable Swap Mode
+                    </button>
                     <button class="control-button control-button-secondary" id="reset-session-btn">
                         Reset Session
                     </button>
@@ -1527,6 +1761,11 @@
                 <!-- Populated by JS -->
             </div>
 
+            <!-- Real-Time Fault Lines Ticker -->
+            <div class="fault-lines-ticker" id="fault-lines-ticker">
+                <!-- Populated by JS when other groups make choices -->
+            </div>
+
             <div class="student-content">
                 <div class="options-container" id="options-container">
                     <!-- Populated by JS -->
@@ -1548,6 +1787,43 @@
             <div class="comparison-container">
                 <h1 class="comparison-title">AI Profile Comparison</h1>
                 <div class="comparison-groups" id="comparison-groups">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat View -->
+        <div id="chat-view" class="view">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <div class="chat-avatar-section">
+                        <canvas id="chat-avatar-canvas" width="120" height="120"></canvas>
+                    </div>
+                    <div class="chat-header-info">
+                        <div class="chat-ai-name" id="chat-ai-name">Your AI</div>
+                        <div class="chat-ai-traits" id="chat-ai-traits"></div>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-welcome" id="chat-welcome">
+                        <p>Your AI is ready to talk. Say hello!</p>
+                    </div>
+                </div>
+                <div class="chat-typing" id="chat-typing" style="display: none;">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." maxlength="500" autocomplete="off">
+                    <button class="chat-send-btn" id="chat-send-btn">Send</button>
+                </div>
+            </div>
+
+            <!-- Swap Mode: AI Gallery (shown when swap is active) -->
+            <div class="swap-gallery" id="swap-gallery" style="display: none;">
+                <div class="swap-gallery-title">Other Groups' AIs</div>
+                <div class="swap-gallery-grid" id="swap-gallery-grid">
                     <!-- Populated by JS -->
                 </div>
             </div>
@@ -1608,7 +1884,13 @@
                 avatarColor: '#7C4DFF',
                 completionPercent: 0
             },
-            groupAggregates: {}
+            groupAggregates: {},
+            // Chat state
+            phase: 'design', // 'design' | 'chat' | 'swap'
+            chatMessages: [],
+            currentChatGroupId: null,
+            isWaitingForResponse: false,
+            allGroupSummaries: {}
         };
 
         // =====================================================================
@@ -1694,6 +1976,44 @@
             updateDashboardGroup(data.groupId);
         });
 
+        // Real-time fault lines -- another group made a choice
+        socket.on('choice-broadcast', (data) => {
+            // Only show choices from OTHER groups
+            if (state.role !== 'student') return;
+            if (String(data.groupId) === String(state.groupId)) return;
+            if (!data.choiceText) return;
+
+            const ticker = document.getElementById('fault-lines-ticker');
+            if (!ticker) return;
+
+            const groupColors = ['#7C4DFF', '#00BCD4', '#FFB300', '#FF6B6B', '#51CF66', '#FF8A65', '#4FC3F7', '#E040FB'];
+            const gIdx = parseInt(data.groupId) || 0;
+            const gColor = groupColors[gIdx % groupColors.length];
+
+            const card = document.createElement('div');
+            card.className = 'fault-line-card';
+            card.style.borderLeftColor = gColor;
+            card.style.borderLeftWidth = '3px';
+            card.innerHTML =
+                '<div class="fault-line-group" style="color: ' + gColor + ';">' + (data.groupName || 'Group') + '</div>' +
+                '<div class="fault-line-prompt">' + (data.optionPrompt || '') + '</div>' +
+                '<div class="fault-line-choice">' + data.choiceText + '</div>';
+
+            ticker.appendChild(card);
+            ticker.scrollLeft = ticker.scrollWidth;
+
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+                card.classList.add('fading');
+                setTimeout(() => card.remove(), 500);
+            }, 10000);
+
+            // Keep max 6 visible
+            while (ticker.children.length > 6) {
+                ticker.removeChild(ticker.firstChild);
+            }
+        });
+
         socket.on('student-joined', (data) => {
             // Track the new member in the group aggregate
             if (state.groupAggregates[data.groupId]) {
@@ -1744,6 +2064,72 @@
         });
 
         // =====================================================================
+        // CHAT PHASE EVENTS
+        // =====================================================================
+
+        socket.on('chat-phase-started', (data) => {
+            state.phase = 'chat';
+            state.chatMessages = [];
+            state.currentChatGroupId = String(state.groupId);
+            state.allGroupSummaries = data.groupSummaries || {};
+            if (data.activeDimensions) state.activeDimensions = data.activeDimensions;
+
+            if (state.role === 'student') {
+                showView('chat');
+                renderChatView();
+            } else {
+                // Host: show swap button
+                const swapBtn = document.getElementById('enable-swap-btn');
+                if (swapBtn) swapBtn.style.display = 'inline-flex';
+            }
+        });
+
+        socket.on('chat-response', (data) => {
+            const typing = document.getElementById('chat-typing');
+            if (typing) typing.style.display = 'none';
+
+            const messagesEl = document.getElementById('chat-messages');
+            if (!messagesEl) return;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble chat-bubble-ai' + (data.error ? ' chat-bubble-error' : '');
+            bubble.textContent = data.text;
+            messagesEl.appendChild(bubble);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            // Re-draw avatar (it can react to conversation)
+            const chatCanvas = document.getElementById('chat-avatar-canvas');
+            if (chatCanvas) {
+                const summary = state.allGroupSummaries[state.currentChatGroupId];
+                if (summary && summary.aggregate) {
+                    const groupColors = ['#7C4DFF', '#00BCD4', '#FFB300', '#FF6B6B', '#51CF66', '#FF8A65', '#4FC3F7', '#E040FB'];
+                    const gIdx = parseInt(state.currentChatGroupId) || 0;
+                    drawExpressiveAvatar(chatCanvas, summary.aggregate.dimensions, state.activeDimensions, 120, groupColors[gIdx % groupColors.length]);
+                }
+            }
+
+            state.isWaitingForResponse = false;
+            const sendBtn = document.getElementById('chat-send-btn');
+            if (sendBtn) sendBtn.disabled = false;
+        });
+
+        socket.on('chat-typing', (data) => {
+            const typing = document.getElementById('chat-typing');
+            if (typing) typing.style.display = data.isTyping ? 'flex' : 'none';
+        });
+
+        socket.on('swap-mode-active', (data) => {
+            state.phase = 'swap';
+            state.allGroupSummaries = data.groupSummaries || {};
+            if (data.activeDimensions) state.activeDimensions = data.activeDimensions;
+
+            if (state.role === 'student') {
+                // Show the swap gallery
+                renderSwapGallery();
+            }
+        });
+
+        // =====================================================================
         // VIEW MANAGEMENT
         // =====================================================================
 
@@ -1767,6 +2153,9 @@
                     break;
                 case 'comparison':
                     document.getElementById('comparison-view').classList.add('active');
+                    break;
+                case 'chat':
+                    document.getElementById('chat-view').classList.add('active');
                     break;
             }
         }
@@ -1997,6 +2386,25 @@
             }
         });
 
+        // Host: Start Chat Phase
+        document.getElementById('start-chat-btn').addEventListener('click', () => {
+            socket.emit('start-chat-phase', { roomCode: state.roomCode });
+        });
+
+        // Host: Enable Swap Mode
+        document.getElementById('enable-swap-btn').addEventListener('click', () => {
+            socket.emit('enable-swap-mode', { roomCode: state.roomCode });
+        });
+
+        // Chat: Send message
+        document.getElementById('chat-send-btn').addEventListener('click', sendChatMessage);
+        document.getElementById('chat-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+
         // =====================================================================
         // STUDENT VIEW
         // =====================================================================
@@ -2173,10 +2581,10 @@
                 completionEl.textContent = completion;
             }
 
-            // Draw small radar chart in compact card
+            // Draw expressive avatar in compact card
             const canvas = document.getElementById('avatar-canvas');
             if (canvas) {
-                drawRadarChart(canvas, state.profile.dimensions, state.activeDimensions, 44, '#7C4DFF');
+                drawExpressiveAvatar(canvas, state.profile.dimensions, state.activeDimensions, 44, '#7C4DFF');
             }
 
             // Also update modal if it's open
@@ -2236,10 +2644,10 @@
                 }
             }
 
-            // Draw radar chart
+            // Draw expressive avatar in modal
             const canvas = document.getElementById('avatar-canvas-modal');
             if (canvas) {
-                drawRadarChart(canvas, state.profile.dimensions, state.activeDimensions, 250, '#7C4DFF');
+                drawExpressiveAvatar(canvas, state.profile.dimensions, state.activeDimensions, 250, '#7C4DFF');
             }
         }
 
@@ -2266,111 +2674,283 @@
         }
 
         // =====================================================================
-        // AVATAR CANVAS RENDERING
+        // AVATAR CANVAS RENDERING - Expressive Animated Face
         // =====================================================================
 
-        function drawRadarChart(canvas, dimensions, activeDimensions, size, color) {
-            if (!canvas || !dimensions || !activeDimensions || activeDimensions.length === 0) return;
-
+        function drawExpressiveAvatar(canvas, dimensions, activeDimensions, size, accentColor) {
+            if (!canvas) return;
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
 
-            // Set canvas size
             canvas.width = size;
             canvas.height = size;
 
-            const centerX = size / 2;
-            const centerY = size / 2;
-            const maxRadius = size * 0.35;
+            // Get dimension values with safe defaults
+            const d = dimensions || {};
+            const w = d.warmth || 0;          // -1 to 1
+            const hon = d.honesty || 0;       // 0 to 1
+            const aut = d.autonomy || 0;      // 0 to 1
+            const mem = d.memory || 0;        // 0 to 1
+            const bnd = d.boundaries || 0;    // 0 to 1
+            const avl = d.availability || 0;  // 0 to 1
+            const trn = d.transparency || 0;  // 0 to 1
 
-            // Clear canvas with dark background
+            const warmthNorm = (w + 1) / 2;  // normalize to 0-1
+            const s = size / 250;             // scale factor (250px is reference)
+            const cx = size / 2;
+            const cy = size / 2;
+
+            // Clear canvas
             ctx.fillStyle = '#0F0A2A';
             ctx.fillRect(0, 0, size, size);
 
-            const numSpokes = activeDimensions.length;
-            const angleSlice = (Math.PI * 2) / numSpokes;
+            // --- AVAILABILITY: controls overall presence/opacity ---
+            ctx.globalAlpha = 0.35 + avl * 0.65;
 
-            // Draw grid background (concentric circles) - skip for very small sizes
-            if (size >= 80) {
-                ctx.strokeStyle = 'rgba(200, 200, 200, 0.1)';
-                ctx.lineWidth = 1;
+            // --- HEAD TILT (Autonomy) ---
+            ctx.save();
+            const tiltAngle = (aut - 0.5) * 0.18;
+            ctx.translate(cx, cy);
+            ctx.rotate(tiltAngle);
+            ctx.translate(-cx, -cy);
 
-                // Draw 4 concentric circles at 25%, 50%, 75%, 100%
-                for (let i = 1; i <= 4; i++) {
-                    const radius = (maxRadius / 4) * i;
-                    ctx.beginPath();
-                    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
+            // ========== HALO / MEMORY GLOW ==========
+            if (mem > 0.15 && size >= 60) {
+                const haloY = cy - 42 * s;
+                const haloR = (30 + mem * 30) * s;
+                const grad = ctx.createRadialGradient(cx, haloY, 0, cx, haloY, haloR);
+                grad.addColorStop(0, 'rgba(255, 215, 100, ' + (mem * 0.6) + ')');
+                grad.addColorStop(0.6, 'rgba(255, 215, 100, ' + (mem * 0.2) + ')');
+                grad.addColorStop(1, 'rgba(255, 215, 100, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(cx, haloY, haloR, 0, Math.PI * 2);
+                ctx.fill();
             }
 
-            // Calculate polygon points
-            const points = activeDimensions.map((dim, index) => {
-                const value = dimensions[dim] || 0;
-                const percentage = dimToPercent(value, dim);
-                const normalizedValue = percentage / 100;
-                const radius = normalizedValue * maxRadius;
+            // ========== HEAD ==========
+            const headR = 38 * s;
 
-                const angle = angleSlice * index - Math.PI / 2; // Start from top
-                const x = centerX + radius * Math.cos(angle);
-                const y = centerY + radius * Math.sin(angle);
+            // Head color from warmth
+            let hue, sat, lit;
+            if (warmthNorm > 0.6) {
+                hue = 20 + warmthNorm * 20;
+                sat = 45 + warmthNorm * 30;
+                lit = 72 + warmthNorm * 8;
+            } else if (warmthNorm < 0.4) {
+                hue = 210 + (1 - warmthNorm) * 30;
+                sat = 35 + (1 - warmthNorm) * 25;
+                lit = 68 + (1 - warmthNorm) * 8;
+            } else {
+                hue = 265;
+                sat = 30;
+                lit = 76;
+            }
+            const headColor = 'hsl(' + hue + ', ' + sat + '%, ' + lit + '%)';
 
-                return { x, y, angle, dim };
-            });
-
-            // Draw spokes and labels - skip labels for very small sizes
-            ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
-            ctx.lineWidth = 1;
-
-            points.forEach((point, index) => {
-                // Draw spoke to outer edge (not just to data point)
-                const spokeX = centerX + maxRadius * Math.cos(point.angle);
-                const spokeY = centerY + maxRadius * Math.sin(point.angle);
+            // Head shadow
+            if (size >= 60) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
                 ctx.beginPath();
-                ctx.moveTo(centerX, centerY);
-                ctx.lineTo(spokeX, spokeY);
+                ctx.ellipse(cx + 2 * s, cy + 3 * s, headR, headR * 1.08, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Head shape
+            ctx.fillStyle = headColor;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, headR, headR * 1.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Subtle inner glow
+            if (size >= 100) {
+                const innerGlow = ctx.createRadialGradient(cx - 8 * s, cy - 12 * s, 0, cx, cy, headR);
+                innerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+                innerGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = innerGlow;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, headR, headR * 1.08, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // ========== BOUNDARIES BORDER ==========
+            if (bnd > 0.1) {
+                const borderAlpha = 0.2 + bnd * 0.6;
+                const borderWidth = (1 + bnd * 5) * s;
+                ctx.strokeStyle = accentColor || '#7C4DFF';
+                ctx.lineWidth = borderWidth;
+                ctx.globalAlpha = (0.35 + avl * 0.65) * borderAlpha;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, headR + (4 + bnd * 3) * s, (headR + (4 + bnd * 3) * s) * 1.08, 0, 0, Math.PI * 2);
                 ctx.stroke();
 
-                // Draw labels for medium and large sizes
-                if (size >= 80) {
-                    const labelDim = activeDimensions[index];
-                    const labelInfo = DIM_LABELS[labelDim] || { label: labelDim, color: '#7C4DFF' };
-                    const shortLabel = labelInfo.label.substring(0, 3).toUpperCase();
-
-                    // Calculate label position (beyond the spoke)
-                    const labelDistance = maxRadius + 20;
-                    const labelX = centerX + labelDistance * Math.cos(point.angle);
-                    const labelY = centerY + labelDistance * Math.sin(point.angle);
-
-                    // Draw label
-                    ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-                    ctx.font = size >= 150 ? 'bold 11px Inter' : 'bold 9px Inter';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(shortLabel, labelX, labelY);
+                // Double ring for high boundaries
+                if (bnd > 0.6 && size >= 80) {
+                    ctx.lineWidth = borderWidth * 0.5;
+                    ctx.globalAlpha = (0.35 + avl * 0.65) * borderAlpha * 0.4;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, headR + (9 + bnd * 5) * s, (headR + (9 + bnd * 5) * s) * 1.08, 0, 0, Math.PI * 2);
+                    ctx.stroke();
                 }
-            });
 
-            // Draw filled polygon
-            ctx.fillStyle = color + '40'; // Semi-transparent fill
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.35 + avl * 0.65;
+            }
+
+            // ========== EYES ==========
+            const eyeY = cy - 6 * s;
+            const eyeSpacing = 13 * s;
+
+            // Honesty controls openness: 0 = narrow/guarded, 1 = wide open/direct
+            const eyeW = 8 * s;
+            const eyeH = eyeW * (0.35 + hon * 0.65);
+
+            // Eye whites
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(cx - eyeSpacing, eyeY, eyeW, eyeH, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(cx + eyeSpacing, eyeY, eyeW, eyeH, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Iris color from accent
+            if (size >= 60) {
+                const irisR = Math.min(eyeH * 0.7, 4.5 * s);
+                ctx.fillStyle = accentColor || '#7C4DFF';
+                ctx.globalAlpha = (0.35 + avl * 0.65) * 0.4;
+                ctx.beginPath();
+                ctx.arc(cx - eyeSpacing, eyeY, irisR + 1 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(cx + eyeSpacing, eyeY, irisR + 1 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 0.35 + avl * 0.65;
+            }
+
+            // Pupils -- transparency controls size (more open = larger, more readable)
+            const pupilR = (2 + trn * 2.5) * s;
+            ctx.fillStyle = '#1a1535';
+            ctx.beginPath();
+            ctx.arc(cx - eyeSpacing, eyeY, pupilR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cx + eyeSpacing, eyeY, pupilR, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye highlights (sparkle)
+            if (size >= 60) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                const hlR = Math.max(1, 1.5 * s);
+                ctx.beginPath();
+                ctx.arc(cx - eyeSpacing + 2 * s, eyeY - 1.5 * s, hlR, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(cx + eyeSpacing + 2 * s, eyeY - 1.5 * s, hlR, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // ========== EYEBROWS (medium+ sizes) ==========
+            if (size >= 80) {
+                ctx.strokeStyle = 'rgba(60, 45, 70, 0.6)';
+                ctx.lineWidth = Math.max(1.5, 2 * s);
+                ctx.lineCap = 'round';
+
+                const browY = eyeY - eyeH - 5 * s;
+                const browW = 9 * s;
+                // High boundaries = more furrowed/assertive brows
+                // High autonomy = raised inner brow (confident)
+                const browFurrow = bnd * 0.25;
+                const browRaise = aut * 0.15;
+
+                // Left brow
+                ctx.beginPath();
+                ctx.moveTo(cx - eyeSpacing - browW, browY + browFurrow * 12 * s);
+                ctx.quadraticCurveTo(cx - eyeSpacing, browY - browRaise * 12 * s - 2 * s, cx - eyeSpacing + browW, browY - browFurrow * 6 * s);
+                ctx.stroke();
+
+                // Right brow (mirrored)
+                ctx.beginPath();
+                ctx.moveTo(cx + eyeSpacing - browW, browY - browFurrow * 6 * s);
+                ctx.quadraticCurveTo(cx + eyeSpacing, browY - browRaise * 12 * s - 2 * s, cx + eyeSpacing + browW, browY + browFurrow * 12 * s);
+                ctx.stroke();
+            }
+
+            // ========== MOUTH ==========
+            const mouthY = cy + 16 * s;
+            const mouthW = (12 + warmthNorm * 5) * s;
+            const curve = w * 14 * s;  // negative = frown, positive = smile
+
+            // Mouth color: warm = rosy, cold = muted
+            const mouthAlpha = 0.5 + warmthNorm * 0.4;
+            if (warmthNorm > 0.5) {
+                ctx.strokeStyle = 'rgba(190, 80, 90, ' + mouthAlpha + ')';
+            } else {
+                ctx.strokeStyle = 'rgba(100, 80, 120, ' + mouthAlpha + ')';
+            }
+            ctx.lineWidth = Math.max(1.5, 2.5 * s);
+            ctx.lineCap = 'round';
 
             ctx.beginPath();
-            points.forEach((point, index) => {
-                if (index === 0) ctx.moveTo(point.x, point.y);
-                else ctx.lineTo(point.x, point.y);
-            });
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(cx - mouthW, mouthY);
+            ctx.quadraticCurveTo(cx, mouthY + curve, cx + mouthW, mouthY);
             ctx.stroke();
 
-            // Draw center point
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
-            ctx.fill();
+            // Big smile fill for very warm faces
+            if (w > 0.4 && size >= 60) {
+                ctx.fillStyle = 'rgba(190, 80, 90, ' + ((w - 0.4) * 0.35) + ')';
+                ctx.beginPath();
+                ctx.moveTo(cx - mouthW, mouthY);
+                ctx.quadraticCurveTo(cx, mouthY + curve, cx + mouthW, mouthY);
+                ctx.quadraticCurveTo(cx, mouthY + curve * 0.3, cx - mouthW, mouthY);
+                ctx.fill();
+            }
 
+            // Frown emphasis for very cold faces
+            if (w < -0.4 && size >= 60) {
+                ctx.strokeStyle = 'rgba(100, 80, 140, 0.3)';
+                ctx.lineWidth = Math.max(1, 1.5 * s);
+                ctx.beginPath();
+                ctx.moveTo(cx - mouthW * 0.6, mouthY + curve * 0.6 - 2 * s);
+                ctx.quadraticCurveTo(cx, mouthY + curve * 0.6 + Math.abs(curve) * 0.2, cx + mouthW * 0.6, mouthY + curve * 0.6 - 2 * s);
+                ctx.stroke();
+            }
+
+            // ========== CHEEK BLUSH (warmth, medium+ sizes) ==========
+            if (warmthNorm > 0.55 && size >= 100) {
+                const blushAlpha = (warmthNorm - 0.55) * 0.6;
+                ctx.fillStyle = 'rgba(255, 140, 140, ' + blushAlpha + ')';
+                ctx.beginPath();
+                ctx.ellipse(cx - 22 * s, cy + 6 * s, 7 * s, 4.5 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(cx + 22 * s, cy + 6 * s, 7 * s, 4.5 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // ========== TRANSPARENCY DETAIL LINES (high transparency, medium+ sizes) ==========
+            if (trn > 0.5 && size >= 100) {
+                // Small detail marks showing "openness" -- like visible circuitry or thought lines
+                ctx.strokeStyle = 'rgba(160, 140, 200, ' + ((trn - 0.5) * 0.4) + ')';
+                ctx.lineWidth = 1 * s;
+                // Small marks near temples
+                const detailX = headR * 0.75;
+                ctx.beginPath();
+                ctx.moveTo(cx - detailX, cy - 15 * s);
+                ctx.lineTo(cx - detailX + 4 * s, cy - 18 * s);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(cx + detailX, cy - 15 * s);
+                ctx.lineTo(cx + detailX - 4 * s, cy - 18 * s);
+                ctx.stroke();
+                // Small dot near forehead
+                ctx.fillStyle = 'rgba(160, 140, 200, ' + ((trn - 0.5) * 0.3) + ')';
+                ctx.beginPath();
+                ctx.arc(cx, cy - 28 * s, 2 * s, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Restore (undo head tilt)
+            ctx.restore();
             ctx.globalAlpha = 1;
         }
 
@@ -2477,14 +3057,157 @@
 
                 container.appendChild(card);
 
-                // Draw radar chart for this group
+                // Draw expressive avatar for this group
                 setTimeout(() => {
                     const canvas = card.querySelector('.comparison-avatar-canvas');
                     if (canvas) {
-                        drawRadarChart(canvas, dims, state.activeDimensions, 200, groupColor);
+                        drawExpressiveAvatar(canvas, dims, state.activeDimensions, 200, groupColor);
                     }
                 }, 100);
             });
+        }
+
+        // =====================================================================
+        // CHAT VIEW RENDERING
+        // =====================================================================
+
+        function renderChatView() {
+            const groupColors = ['#7C4DFF', '#00BCD4', '#FFB300', '#FF6B6B', '#51CF66', '#FF8A65', '#4FC3F7', '#E040FB'];
+            const gId = state.currentChatGroupId || String(state.groupId);
+            const gIdx = parseInt(gId) || 0;
+            const gColor = groupColors[gIdx % groupColors.length];
+
+            // Get the AI's profile data
+            const summary = state.allGroupSummaries ? state.allGroupSummaries[gId] : null;
+            const dims = summary && summary.aggregate ? summary.aggregate.dimensions : (state.profile ? state.profile.dimensions : {});
+            const badges = summary && summary.aggregate ? (summary.aggregate.badges || []) : (state.profile ? state.profile.badges : []);
+
+            // Update header
+            const nameEl = document.getElementById('chat-ai-name');
+            if (nameEl) {
+                const isOwnGroup = (String(gId) === String(state.groupId));
+                nameEl.textContent = isOwnGroup ? 'Your AI' : ((summary ? summary.groupName : 'Group') + "'s AI");
+                nameEl.style.color = gColor;
+            }
+
+            const traitsEl = document.getElementById('chat-ai-traits');
+            if (traitsEl && badges.length > 0) {
+                traitsEl.textContent = badges.join(' - ');
+            }
+
+            // Draw avatar
+            const chatCanvas = document.getElementById('chat-avatar-canvas');
+            if (chatCanvas) {
+                drawExpressiveAvatar(chatCanvas, dims, state.activeDimensions, 120, gColor);
+            }
+
+            // Clear messages
+            const messagesEl = document.getElementById('chat-messages');
+            if (messagesEl) {
+                messagesEl.innerHTML = '<div class="chat-welcome"><p>Your AI is ready to talk. Say hello!</p></div>';
+            }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            if (!input || !input.value.trim()) return;
+            if (state.isWaitingForResponse) return;
+
+            const message = input.value.trim();
+            input.value = '';
+
+            // Remove welcome message
+            const welcome = document.getElementById('chat-welcome');
+            if (welcome) welcome.remove();
+
+            // Add user bubble
+            const messagesEl = document.getElementById('chat-messages');
+            if (messagesEl) {
+                const bubble = document.createElement('div');
+                bubble.className = 'chat-bubble chat-bubble-user';
+                bubble.textContent = message;
+                messagesEl.appendChild(bubble);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+
+            // Show typing indicator
+            const typing = document.getElementById('chat-typing');
+            if (typing) typing.style.display = 'flex';
+
+            state.isWaitingForResponse = true;
+            const sendBtn = document.getElementById('chat-send-btn');
+            if (sendBtn) sendBtn.disabled = true;
+
+            // Determine target group (own group vs swap target)
+            const targetGroupId = (state.phase === 'swap' && state.currentChatGroupId !== String(state.groupId))
+                ? state.currentChatGroupId : undefined;
+
+            socket.emit('send-chat-message', {
+                roomCode: state.roomCode,
+                message,
+                targetGroupId
+            });
+        }
+
+        function renderSwapGallery() {
+            const gallery = document.getElementById('swap-gallery');
+            const grid = document.getElementById('swap-gallery-grid');
+            if (!gallery || !grid) return;
+
+            gallery.style.display = 'block';
+            grid.innerHTML = '';
+
+            const groupColors = ['#7C4DFF', '#00BCD4', '#FFB300', '#FF6B6B', '#51CF66', '#FF8A65', '#4FC3F7', '#E040FB'];
+
+            // Add "Your AI" card first
+            const ownCard = document.createElement('div');
+            ownCard.className = 'swap-ai-card' + (String(state.currentChatGroupId) === String(state.groupId) ? ' active' : '');
+            const ownIdx = parseInt(state.groupId) || 0;
+            ownCard.innerHTML =
+                '<canvas class="swap-avatar-canvas" width="80" height="80"></canvas>' +
+                '<div class="swap-ai-name" style="color: ' + groupColors[ownIdx % groupColors.length] + ';">Your AI</div>';
+            ownCard.addEventListener('click', () => switchChatTarget(String(state.groupId)));
+            grid.appendChild(ownCard);
+
+            // Draw own avatar
+            setTimeout(() => {
+                const ownCanvas = ownCard.querySelector('.swap-avatar-canvas');
+                const ownSummary = state.allGroupSummaries[String(state.groupId)];
+                if (ownCanvas && ownSummary && ownSummary.aggregate) {
+                    drawExpressiveAvatar(ownCanvas, ownSummary.aggregate.dimensions, state.activeDimensions, 80, groupColors[ownIdx % groupColors.length]);
+                }
+            }, 50);
+
+            // Add other groups
+            Object.entries(state.allGroupSummaries).forEach(([gId, summary]) => {
+                if (String(gId) === String(state.groupId)) return;
+                const idx = parseInt(gId) || 0;
+                const gColor = groupColors[idx % groupColors.length];
+                const badges = summary.aggregate ? (summary.aggregate.badges || []).slice(0, 3) : [];
+
+                const card = document.createElement('div');
+                card.className = 'swap-ai-card' + (String(state.currentChatGroupId) === String(gId) ? ' active' : '');
+                card.innerHTML =
+                    '<canvas class="swap-avatar-canvas" width="80" height="80"></canvas>' +
+                    '<div class="swap-ai-name" style="color: ' + gColor + ';">' + (summary.groupName || 'Group') + "'s AI</div>" +
+                    '<div class="swap-ai-summary">' + (badges.length > 0 ? badges.join(', ') : '') + '</div>';
+                card.addEventListener('click', () => switchChatTarget(String(gId)));
+                grid.appendChild(card);
+
+                setTimeout(() => {
+                    const canvas = card.querySelector('.swap-avatar-canvas');
+                    if (canvas && summary.aggregate) {
+                        drawExpressiveAvatar(canvas, summary.aggregate.dimensions, state.activeDimensions, 80, gColor);
+                    }
+                }, 50);
+            });
+        }
+
+        function switchChatTarget(newGroupId) {
+            if (state.currentChatGroupId === newGroupId) return;
+            state.currentChatGroupId = newGroupId;
+            renderChatView();
+            renderSwapGallery();
         }
 
         // =====================================================================

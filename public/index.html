@@ -780,7 +780,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            padding-bottom: 280px;
+            padding-bottom: 80px;
         }
 
         .options-container {
@@ -924,21 +924,23 @@
             font-weight: 600;
         }
 
-        /* Profile Card */
+        /* Profile Card -- compact floating button */
         .profile-card-container {
             position: fixed;
             bottom: 20px;
-            left: 20px;
             right: 20px;
-            max-width: 350px;
             background: var(--bg-secondary);
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--accent-purple);
+            border-radius: 50px;
+            padding: 10px 20px 10px 14px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             cursor: pointer;
             transition: all 0.3s ease;
             z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 260px;
         }
 
         .profile-card-container:hover {
@@ -1373,13 +1375,12 @@
             }
 
             .profile-card-container {
-                left: 10px;
                 right: 10px;
                 max-width: none;
             }
 
             .student-content {
-                padding-bottom: 280px;
+                padding-bottom: 80px;
             }
 
             .profile-modal-content {
@@ -1532,70 +1533,12 @@
                 </div>
             </div>
 
-            <!-- Profile Card (Floating) -->
+            <!-- Profile Card (Compact Floating Button) -->
             <div class="profile-card-container" id="profile-card">
-                <div class="profile-header">
+                <canvas id="avatar-canvas" width="44" height="44" style="border-radius: 50%; flex-shrink: 0;"></canvas>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
                     <div class="profile-title">Your AI Profile</div>
-                </div>
-                <div class="avatar-canvas-container">
-                    <canvas id="avatar-canvas" width="200" height="200"></canvas>
-                </div>
-                <div class="completion-percentage">
-                    <span id="completion-percent">0</span>% Complete
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-label">Warmth</div>
-                        <div class="stat-bar-horizontal">
-                            <div class="stat-bar-fill" id="stat-warmth"></div>
-                        </div>
-                        <div class="stat-value" id="stat-warmth-value">0%</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Honesty</div>
-                        <div class="stat-bar-horizontal">
-                            <div class="stat-bar-fill" id="stat-honesty"></div>
-                        </div>
-                        <div class="stat-value" id="stat-honesty-value">0%</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Autonomy</div>
-                        <div class="stat-bar-horizontal">
-                            <div class="stat-bar-fill" id="stat-autonomy"></div>
-                        </div>
-                        <div class="stat-value" id="stat-autonomy-value">0%</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Memory</div>
-                        <div class="stat-bar-horizontal">
-                            <div class="stat-bar-fill" id="stat-memory"></div>
-                        </div>
-                        <div class="stat-value" id="stat-memory-value">0%</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Boundaries</div>
-                        <div class="stat-bar-horizontal">
-                            <div class="stat-bar-fill" id="stat-boundaries"></div>
-                        </div>
-                        <div class="stat-value" id="stat-boundaries-value">0%</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Availability</div>
-                        <div class="stat-bar-horizontal">
-                            <div class="stat-bar-fill" id="stat-availability"></div>
-                        </div>
-                        <div class="stat-value" id="stat-availability-value">0%</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Transparency</div>
-                        <div class="stat-bar-horizontal">
-                            <div class="stat-bar-fill" id="stat-transparency"></div>
-                        </div>
-                        <div class="stat-value" id="stat-transparency-value">0%</div>
-                    </div>
-                </div>
-                <div class="badges-container" id="badges-container">
-                    <!-- Populated by JS -->
+                    <div style="font-size: 13px; color: var(--text-secondary);"><span id="completion-percent">0</span>% Complete</div>
                 </div>
             </div>
         </div>
@@ -2281,40 +2224,17 @@
                 return;
             }
 
-            // Update stats in card
-            updateStatBar('stat-warmth', state.profile.dimensions.warmth, 'warmth');
-            updateStatBar('stat-honesty', state.profile.dimensions.honesty, 'honesty');
-            updateStatBar('stat-autonomy', state.profile.dimensions.autonomy, 'autonomy');
-            updateStatBar('stat-memory', state.profile.dimensions.memory, 'memory');
-            updateStatBar('stat-boundaries', state.profile.dimensions.boundaries, 'boundaries');
-            updateStatBar('stat-availability', state.profile.dimensions.availability, 'availability');
-            updateStatBar('stat-transparency', state.profile.dimensions.transparency, 'transparency');
-
-            // Update completion
+            // Update completion in compact card
             const completion = Math.round(state.profile.completionPercent || 0);
             const completionEl = document.getElementById('completion-percent');
             if (completionEl) {
                 completionEl.textContent = completion;
             }
 
-            // Update badges
-            const badgesContainer = document.getElementById('badges-container');
-            if (badgesContainer) {
-                badgesContainer.innerHTML = '';
-                if (state.profile.badges && Array.isArray(state.profile.badges)) {
-                    state.profile.badges.forEach(badge => {
-                        const badgeEl = document.createElement('div');
-                        badgeEl.className = 'badge';
-                        badgeEl.textContent = badge;
-                        badgesContainer.appendChild(badgeEl);
-                    });
-                }
-            }
-
-            // Draw avatar
+            // Draw small avatar in compact card
             const canvas = document.getElementById('avatar-canvas');
             if (canvas) {
-                drawAvatar(canvas, state.profile, 200);
+                drawAvatar(canvas, state.profile, 44);
             }
 
             // Also update modal if it's open
